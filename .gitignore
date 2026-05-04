@@ -1,0 +1,42 @@
+# Built application files
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Java/Kotlin compiled files
+*.class
+*.jar
+
+# Gradle
+.gradle/
+build/
+*/build/
+local.properties
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Log files
+*.log
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Keystore
+*.jks
+*.keystore
+
+# Google services
+google-services.json

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <files-path name="prompt_images" path="prompt_images" />
+    <external-files-path name="images" path="Pictures" />
+    <cache-path name="cache" path="." />
+</paths>
