@@ -4,6 +4,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,30 +25,35 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -69,6 +75,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +90,7 @@ import com.aiphoto.manager.data.model.PromptWithTags
 import com.aiphoto.manager.ui.component.ImagePicker
 import com.aiphoto.manager.ui.component.TagChip
 import com.aiphoto.manager.ui.component.TagInput
+import com.aiphoto.manager.ui.theme.LocalAppColorSet
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -95,6 +103,7 @@ fun EditScreen(
     viewModel: EditViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val colorSet = LocalAppColorSet.current
     val title by viewModel.title.collectAsState()
     val description by viewModel.description.collectAsState()
     val selectedTags by viewModel.selectedTags.collectAsState()
@@ -111,7 +120,6 @@ fun EditScreen(
     val artistList by viewModel.artistList.collectAsState()
     val artistListLoading by viewModel.artistListLoading.collectAsState()
 
-    // 提示词列表状态
     var positiveSingleInput by remember { mutableStateOf("") }
     var positiveBatchInput by remember { mutableStateOf("") }
     var negativeSingleInput by remember { mutableStateOf("") }
@@ -121,7 +129,6 @@ fun EditScreen(
     val artistPromptList = remember { mutableStateListOf<String>() }
     var artistSingleInput by remember { mutableStateOf("") }
 
-    // 设置对话框
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showAdvancedSettings by remember { mutableStateOf(false) }
     var showFavoritePositiveDialog by remember { mutableStateOf(false) }
@@ -132,7 +139,6 @@ fun EditScreen(
     val selectedFavoriteNegative = remember { mutableStateListOf<String>() }
     val selectedFavoriteArtist = remember { mutableStateListOf<String>() }
 
-    // 加载现有数据
     LaunchedEffect(existingPrompt) {
         if (existingPrompt != null) {
             viewModel.loadForEdit(existingPrompt)
@@ -155,18 +161,16 @@ fun EditScreen(
             }
             initialTags.forEach { viewModel.addTag(it) }
         } else {
-            // 新建提示词时，添加默认的负向提示词
             val defaultNegativePrompt = "lazyneg, lazyhand, censored, mosaic censoring, photorealistic, realistic, artist name, signature, lowres, bad anatomy, bad hands, text, error, missing fingers, extra fingers, fewer digits, cropped, worst quality, low quality, jpeg artifacts, watermark, username, sketch, jpeg Closed eyes, artifacts, signature, watermark, username, simple background, conjoined, bad ai-generated, shiny clothes, shiny skin, gold skin, white hair, halo,three hands"
             negativePromptList.addAll(parsePrompts(defaultNegativePrompt))
         }
     }
 
-    // 加载收藏的提示词
     LaunchedEffect(Unit) {
         viewModel.loadFavoritePrompts()
     }
 
-    // 设置对话框
+    // 对话框
     if (showSettingsDialog) {
         SettingsDialog(
             currentUrl = comfyUiUrl,
@@ -177,74 +181,54 @@ fun EditScreen(
             }
         )
     }
-
-    // 收藏正向提示词对话框
     if (showFavoritePositiveDialog) {
         FavoritePromptDialog(
             title = "选择正向提示词",
             favoritePrompts = favoritePositivePrompts,
             selectedPrompts = selectedFavoritePositive,
-            onDismiss = {
-                showFavoritePositiveDialog = false
-                selectedFavoritePositive.clear()
-            },
+            onDismiss = { showFavoritePositiveDialog = false; selectedFavoritePositive.clear() },
             onConfirm = {
                 selectedFavoritePositive.forEach { prompt ->
                     if (positivePromptList.none { it.equals(prompt, ignoreCase = true) }) {
                         positivePromptList.add(prompt)
                     }
                 }
-                showFavoritePositiveDialog = false
-                selectedFavoritePositive.clear()
+                showFavoritePositiveDialog = false; selectedFavoritePositive.clear()
             }
         )
     }
-
-    // 收藏负向提示词对话框
     if (showFavoriteNegativeDialog) {
         FavoritePromptDialog(
             title = "选择负向提示词",
             favoritePrompts = favoriteNegativePrompts,
             selectedPrompts = selectedFavoriteNegative,
-            onDismiss = {
-                showFavoriteNegativeDialog = false
-                selectedFavoriteNegative.clear()
-            },
+            onDismiss = { showFavoriteNegativeDialog = false; selectedFavoriteNegative.clear() },
             onConfirm = {
                 selectedFavoriteNegative.forEach { prompt ->
                     if (negativePromptList.none { it.equals(prompt, ignoreCase = true) }) {
                         negativePromptList.add(prompt)
                     }
                 }
-                showFavoriteNegativeDialog = false
-                selectedFavoriteNegative.clear()
+                showFavoriteNegativeDialog = false; selectedFavoriteNegative.clear()
             }
         )
     }
-
-    // 收藏画师对话框
     if (showFavoriteArtistDialog) {
         FavoritePromptDialog(
             title = "选择画师收藏",
             favoritePrompts = favoriteArtistPrompts,
             selectedPrompts = selectedFavoriteArtist,
-            onDismiss = {
-                showFavoriteArtistDialog = false
-                selectedFavoriteArtist.clear()
-            },
+            onDismiss = { showFavoriteArtistDialog = false; selectedFavoriteArtist.clear() },
             onConfirm = {
                 selectedFavoriteArtist.forEach { prompt ->
                     if (artistPromptList.none { it.equals(prompt, ignoreCase = true) }) {
                         artistPromptList.add(prompt)
                     }
                 }
-                showFavoriteArtistDialog = false
-                selectedFavoriteArtist.clear()
+                showFavoriteArtistDialog = false; selectedFavoriteArtist.clear()
             }
         )
     }
-
-    // 画师库选择对话框
     if (showArtistPickerDialog) {
         ArtistPickerDialog(
             artists = artistList,
@@ -258,7 +242,7 @@ fun EditScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (existingPrompt != null) "编辑提示词" else "新建提示词") },
+                title = { Text(if (existingPrompt != null) "编辑提示词" else "新建提示词", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -272,6 +256,7 @@ fun EditScreen(
                         onClick = {
                             viewModel.onPositivePromptChange(positivePromptList.joinToString(", "))
                             viewModel.onNegativePromptChange(negativePromptList.joinToString(", "))
+                            viewModel.onArtistPromptChange(artistPromptList.joinToString(", "))
                             viewModel.savePrompt(onNavigateBack)
                         },
                         enabled = title.isNotBlank()
@@ -279,7 +264,8 @@ fun EditScreen(
                         Icon(
                             Icons.Default.Check,
                             contentDescription = "保存",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = if (title.isNotBlank()) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -294,27 +280,25 @@ fun EditScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // 标题
+            // 基本信息卡片
+            SectionHeader(icon = Icons.Default.Info, title = "基本信息")
             OutlinedTextField(
                 value = title,
                 onValueChange = viewModel::onTitleChange,
                 label = { Text("标题 *") },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary
                 ),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 描述
+            Spacer(modifier = Modifier.height(10.dp))
             OutlinedTextField(
                 value = description,
                 onValueChange = viewModel::onDescriptionChange,
                 label = { Text("描述") },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary
                 ),
@@ -323,9 +307,10 @@ fun EditScreen(
                 maxLines = 4
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // 标签
+            SectionHeader(icon = Icons.AutoMirrored.Filled.Label, title = "标签")
             TagInput(
                 tags = selectedTags,
                 allTags = allTags,
@@ -333,475 +318,230 @@ fun EditScreen(
                 onTagRemoved = viewModel::removeTag
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // 参考图片
-            Text(
-                "参考图片",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            SectionHeader(icon = Icons.Default.AddPhotoAlternate, title = "参考图片")
+            Spacer(modifier = Modifier.height(4.dp))
             ImagePicker(
                 imageUris = imagePaths.map { Uri.parse("file://$it") },
                 onImagesSelected = { uris -> viewModel.addImages(uris) },
                 onImageRemoved = viewModel::removeImage
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // 正向提示词输入
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "正向提示词",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                TextButton(onClick = { showFavoritePositiveDialog = true }) {
-                    Text("收藏 (${favoritePositivePrompts.size})")
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 单个添加输入框
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = positiveSingleInput,
-                    onValueChange = { positiveSingleInput = it },
-                    placeholder = { Text("输入单个提示词后添加") },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary
-                    ),
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
-                )
-                FilledTonalButton(
-                    onClick = {
-                        if (positiveSingleInput.isNotBlank()) {
-                            val trimmed = positiveSingleInput.trim()
-                            if (positivePromptList.none { it.equals(trimmed, ignoreCase = true) }) {
-                                positivePromptList.add(trimmed)
-                            }
-                            positiveSingleInput = ""
+            // 正向提示词
+            PromptSectionCard(
+                icon = Icons.Default.AutoAwesome,
+                title = "正向提示词",
+                gradientColors = listOf("#4A90D9", "#6EC6F8"),
+                chipColor = colorSet.promptChipPositive,
+                promptList = positivePromptList,
+                singleInput = positiveSingleInput,
+                batchInput = positiveBatchInput,
+                favoriteCount = favoritePositivePrompts.size,
+                onSingleInputChange = { positiveSingleInput = it },
+                onBatchInputChange = { positiveBatchInput = it },
+                onAddSingle = {
+                    if (positiveSingleInput.isNotBlank()) {
+                        val trimmed = positiveSingleInput.trim()
+                        if (positivePromptList.none { it.equals(trimmed, ignoreCase = true) }) {
+                            positivePromptList.add(trimmed)
                         }
-                    },
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("添加")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 批量解析输入框
-            OutlinedTextField(
-                value = positiveBatchInput,
-                onValueChange = { positiveBatchInput = it },
-                label = { Text("或批量粘贴（逗号分隔）") },
-                placeholder = { Text("粘贴多个提示词，用逗号分隔...") },
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary
-                ),
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-                maxLines = 4,
-                trailingIcon = {
-                    TextButton(
-                        onClick = {
-                            if (positiveBatchInput.isNotBlank()) {
-                                val parsed = parsePrompts(positiveBatchInput)
-                                parsed.forEach { prompt ->
-                                    if (positivePromptList.none { it.equals(prompt, ignoreCase = true) }) {
-                                        positivePromptList.add(prompt)
-                                    }
-                                }
-                                positiveBatchInput = ""
-                            }
-                        }
-                    ) {
-                        Text("解析", color = MaterialTheme.colorScheme.primary)
+                        positiveSingleInput = ""
                     }
-                }
+                },
+                onParseBatch = {
+                    if (positiveBatchInput.isNotBlank()) {
+                        parsePrompts(positiveBatchInput).forEach { prompt ->
+                            if (positivePromptList.none { it.equals(prompt, ignoreCase = true) }) {
+                                positivePromptList.add(prompt)
+                            }
+                        }
+                        positiveBatchInput = ""
+                    }
+                },
+                onClear = { positivePromptList.clear() },
+                onShowFavorites = { showFavoritePositiveDialog = true }
             )
 
-            // 正向提示词芯片显示
-            if (positivePromptList.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "${positivePromptList.size} 个提示词",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    TextButton(
-                        onClick = { positivePromptList.clear() },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Text("清空")
-                    }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    positivePromptList.forEachIndexed { index, prompt ->
-                        TagChip(
-                            text = prompt,
-                            color = "#FFC0D0",
-                            isSelected = false,
-                            onRemove = { positivePromptList.removeAt(index) }
-                        )
-                    }
-                }
-            }
+            Spacer(modifier = Modifier.height(14.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 负向提示词输入
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "负向提示词",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                TextButton(onClick = { showFavoriteNegativeDialog = true }) {
-                    Text("收藏 (${favoriteNegativePrompts.size})")
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 单个添加输入框
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = negativeSingleInput,
-                    onValueChange = { negativeSingleInput = it },
-                    placeholder = { Text("输入单个提示词后添加") },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary
-                    ),
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
-                )
-                FilledTonalButton(
-                    onClick = {
-                        if (negativeSingleInput.isNotBlank()) {
-                            val trimmed = negativeSingleInput.trim()
-                            if (negativePromptList.none { it.equals(trimmed, ignoreCase = true) }) {
-                                negativePromptList.add(trimmed)
-                            }
-                            negativeSingleInput = ""
+            // 负向提示词
+            PromptSectionCard(
+                icon = Icons.Default.BookmarkAdd,
+                title = "负向提示词",
+                gradientColors = listOf("#B0A0D0", "#C084FC"),
+                chipColor = colorSet.promptChipNegative,
+                promptList = negativePromptList,
+                singleInput = negativeSingleInput,
+                batchInput = negativeBatchInput,
+                favoriteCount = favoriteNegativePrompts.size,
+                onSingleInputChange = { negativeSingleInput = it },
+                onBatchInputChange = { negativeBatchInput = it },
+                onAddSingle = {
+                    if (negativeSingleInput.isNotBlank()) {
+                        val trimmed = negativeSingleInput.trim()
+                        if (negativePromptList.none { it.equals(trimmed, ignoreCase = true) }) {
+                            negativePromptList.add(trimmed)
                         }
-                    },
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("添加")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 批量解析输入框
-            OutlinedTextField(
-                value = negativeBatchInput,
-                onValueChange = { negativeBatchInput = it },
-                label = { Text("或批量粘贴（逗号分隔）") },
-                placeholder = { Text("粘贴多个提示词，用逗号分隔...") },
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary
-                ),
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-                maxLines = 4,
-                trailingIcon = {
-                    TextButton(
-                        onClick = {
-                            if (negativeBatchInput.isNotBlank()) {
-                                val parsed = parsePrompts(negativeBatchInput)
-                                parsed.forEach { prompt ->
-                                    if (negativePromptList.none { it.equals(prompt, ignoreCase = true) }) {
-                                        negativePromptList.add(prompt)
-                                    }
-                                }
-                                negativeBatchInput = ""
+                        negativeSingleInput = ""
+                    }
+                },
+                onParseBatch = {
+                    if (negativeBatchInput.isNotBlank()) {
+                        parsePrompts(negativeBatchInput).forEach { prompt ->
+                            if (negativePromptList.none { it.equals(prompt, ignoreCase = true) }) {
+                                negativePromptList.add(prompt)
                             }
                         }
-                    ) {
-                        Text("解析", color = MaterialTheme.colorScheme.primary)
+                        negativeBatchInput = ""
                     }
-                }
+                },
+                onClear = { negativePromptList.clear() },
+                onShowFavorites = { showFavoriteNegativeDialog = true }
             )
 
-            // 负向提示词芯片显示
-            if (negativePromptList.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "${negativePromptList.size} 个提示词",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    TextButton(
-                        onClick = { negativePromptList.clear() },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Text("清空")
-                    }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    negativePromptList.forEachIndexed { index, prompt ->
-                        TagChip(
-                            text = prompt,
-                            color = "#D8B4FE",
-                            isSelected = false,
-                            onRemove = { negativePromptList.removeAt(index) }
-                        )
-                    }
-                }
-            }
+            Spacer(modifier = Modifier.height(14.dp))
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 画师区域
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "画师",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row {
+            // 画师
+            PromptSectionCard(
+                icon = Icons.Default.Person,
+                title = "画师",
+                gradientColors = listOf("#6EC6F8", "#22D3EE"),
+                chipColor = colorSet.promptChipArtist,
+                promptList = artistPromptList,
+                singleInput = artistSingleInput,
+                batchInput = "",
+                favoriteCount = favoriteArtistPrompts.size,
+                onSingleInputChange = { artistSingleInput = it },
+                onBatchInputChange = { },
+                onAddSingle = {
+                    if (artistSingleInput.isNotBlank()) {
+                        val trimmed = artistSingleInput.trim()
+                        if (artistPromptList.none { it.equals(trimmed, ignoreCase = true) }) {
+                            artistPromptList.add(trimmed)
+                        }
+                        artistSingleInput = ""
+                    }
+                },
+                onParseBatch = { },
+                onClear = { artistPromptList.clear() },
+                onShowFavorites = { showFavoriteArtistDialog = true },
+                extraActions = {
                     TextButton(onClick = {
                         viewModel.loadArtistList()
                         showArtistPickerDialog = true
                     }) {
+                        Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text("画师库")
                     }
-                    TextButton(onClick = { showFavoriteArtistDialog = true }) {
-                        Text("收藏 (${favoriteArtistPrompts.size})")
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
+                },
+                chipLabelSingular = "画师",
+                chipLabelPlural = "个画师"
+            )
 
-            // 画师添加输入框
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = artistSingleInput,
-                    onValueChange = { artistSingleInput = it },
-                    placeholder = { Text("输入画师tag，如 @dairi") },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary
-                    ),
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
-                )
-                FilledTonalButton(
-                    onClick = {
-                        if (artistSingleInput.isNotBlank()) {
-                            val trimmed = artistSingleInput.trim()
-                            if (artistPromptList.none { it.equals(trimmed, ignoreCase = true) }) {
-                                artistPromptList.add(trimmed)
-                            }
-                            artistSingleInput = ""
-                        }
-                    },
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("添加")
-                }
-            }
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // 画师芯片显示
-            if (artistPromptList.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "${artistPromptList.size} 个画师",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    TextButton(
-                        onClick = { artistPromptList.clear() },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Text("清空")
-                    }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    artistPromptList.forEachIndexed { index, artist ->
-                        TagChip(
-                            text = artist,
-                            color = "#B0D8FF",
-                            isSelected = false,
-                            onRemove = { artistPromptList.removeAt(index) }
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 保存按钮
+            // 更多设置
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                 )
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    // 标题栏（可点击展开/收起）
+                Column(modifier = Modifier.padding(14.dp)) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clickable { showAdvancedSettings = !showAdvancedSettings }
                             .padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            "更多设置",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        IconButton(
-                            onClick = { showAdvancedSettings = !showAdvancedSettings },
-                            modifier = Modifier.size(32.dp)
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                if (showAdvancedSettings) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                contentDescription = if (showAdvancedSettings) "收起" else "展开",
+                                Icons.Default.Tune,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "更多设置",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
+                        Icon(
+                            if (showAdvancedSettings) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (showAdvancedSettings) "收起" else "展开",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
 
-                    // 展开的内容
                     if (showAdvancedSettings) {
                         Spacer(modifier = Modifier.height(12.dp))
-
-                        // 宽度
-                        OutlinedTextField(
-                            value = width.toString(),
-                            onValueChange = {
-                                val value = it.toIntOrNull()
-                                if (value != null && value > 0) {
-                                    viewModel.onWidthChange(value)
-                                }
-                            },
-                            label = { Text("宽度 (Width)") },
-                            shape = RoundedCornerShape(12.dp),
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // 高度
-                        OutlinedTextField(
-                            value = height.toString(),
-                            onValueChange = {
-                                val value = it.toIntOrNull()
-                                if (value != null && value > 0) {
-                                    viewModel.onHeightChange(value)
-                                }
-                            },
-                            label = { Text("高度 (Height)") },
-                            shape = RoundedCornerShape(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = width.toString(),
+                                onValueChange = {
+                                    val value = it.toIntOrNull()
+                                    if (value != null && value > 0) viewModel.onWidthChange(value)
+                                },
+                                label = { Text("宽度") },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = height.toString(),
+                                onValueChange = {
+                                    val value = it.toIntOrNull()
+                                    if (value != null && value > 0) viewModel.onHeightChange(value)
+                                },
+                                label = { Text("高度") },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // 步数
-                        OutlinedTextField(
-                            value = steps.toString(),
-                            onValueChange = {
-                                val value = it.toIntOrNull()
-                                if (value != null && value > 0) {
-                                    viewModel.onStepsChange(value)
-                                }
-                            },
-                            label = { Text("步数 (Steps)") },
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // CFG Scale
-                        OutlinedTextField(
-                            value = cfgScale.toString(),
-                            onValueChange = {
-                                val value = it.toDoubleOrNull()
-                                if (value != null && value > 0) {
-                                    viewModel.onCfgScaleChange(value)
-                                }
-                            },
-                            label = { Text("CFG Scale") },
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = steps.toString(),
+                                onValueChange = {
+                                    val value = it.toIntOrNull()
+                                    if (value != null && value > 0) viewModel.onStepsChange(value)
+                                },
+                                label = { Text("步数") },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = cfgScale.toString(),
+                                onValueChange = {
+                                    val value = it.toDoubleOrNull()
+                                    if (value != null && value > 0) viewModel.onCfgScaleChange(value)
+                                },
+                                label = { Text("CFG Scale") },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                        }
                     }
                 }
             }
@@ -816,21 +556,199 @@ fun EditScreen(
                     viewModel.onArtistPromptChange(artistPromptList.joinToString(", "))
                     viewModel.savePrompt(onNavigateBack)
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(14.dp),
                 enabled = title.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
-                Text("保存提示词")
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("保存提示词", fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
+
+// ==================== 辅助组件 ====================
+
+@Composable
+private fun SectionHeader(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(bottom = 8.dp)
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            title,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PromptSectionCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    gradientColors: List<String>,
+    chipColor: String,
+    promptList: List<String>,
+    singleInput: String,
+    batchInput: String,
+    favoriteCount: Int,
+    onSingleInputChange: (String) -> Unit,
+    onBatchInputChange: (String) -> Unit,
+    onAddSingle: () -> Unit,
+    onParseBatch: () -> Unit,
+    onClear: () -> Unit,
+    onShowFavorites: () -> Unit,
+    extraActions: (@Composable () -> Unit)? = null,
+    chipLabelSingular: String = "提示词",
+    chipLabelPlural: String = "个提示词"
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row {
+                    if (extraActions != null) {
+                        extraActions()
+                    }
+                    TextButton(onClick = onShowFavorites) {
+                        Text("收藏 ($favoriteCount)")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 单个添加
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = singleInput,
+                    onValueChange = onSingleInputChange,
+                    placeholder = { Text("输入后添加") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.weight(1f),
+                    singleLine = true
+                )
+                FilledTonalButton(
+                    onClick = onAddSingle,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("添加")
+                }
+            }
+
+            // 批量粘贴（仅非画师section显示）
+            if (batchInput.isNotEmpty() || onParseBatch.toString() != "{}") {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = batchInput,
+                    onValueChange = onBatchInputChange,
+                    label = { Text("或批量粘贴（逗号分隔）") },
+                    placeholder = { Text("粘贴多个提示词...") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    maxLines = 4,
+                    trailingIcon = {
+                        TextButton(onClick = onParseBatch) {
+                            Text("解析", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                )
+            }
+
+            // 提示词芯片
+            if (promptList.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "${promptList.size} $chipLabelPlural",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    TextButton(
+                        onClick = onClear,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("清空")
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    promptList.forEachIndexed { index, prompt ->
+                        TagChip(
+                            text = prompt,
+                            color = chipColor,
+                            isSelected = false,
+                            onRemove = null
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==================== 对话框 ====================
 
 @Composable
 fun SettingsDialog(
@@ -887,10 +805,10 @@ fun FavoritePromptDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    // 根据标题判断是正向还是负向提示词
     val isPositive = title.contains("正向")
-    val selectedColor = if (isPositive) "#FF6B9D" else "#C084FC"
-    val unselectedColor = if (isPositive) "#FFC0D0" else "#D8B4FE"
+    val appColorSet = LocalAppColorSet.current
+    val selectedColor = if (isPositive) appColorSet.promptChipPositive else appColorSet.promptChipNegative
+    val unselectedColor = if (isPositive) "#B3D8F7" else "#DDD6FE"
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1007,7 +925,6 @@ fun ArtistPickerDialog(
         filteredArtists.take(visibleCount)
     }
 
-    // 搜索或排序变化时重置分页
     LaunchedEffect(searchQuery, sortByPostCount) {
         visibleCount = 200
     }
@@ -1165,10 +1082,7 @@ fun ArtistPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                enabled = true
-            ) {
+            TextButton(onClick = onConfirm) {
                 Text("完成")
             }
         },
@@ -1179,7 +1093,6 @@ fun ArtistPickerDialog(
         }
     )
 
-    // 长按预览大图
     previewArtist?.let { artist ->
         Dialog(onDismissRequest = { previewArtist = null }) {
             Card(

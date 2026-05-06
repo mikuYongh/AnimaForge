@@ -1,8 +1,10 @@
 package com.aiphoto.manager.ui.screen.detail
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,6 +45,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -53,14 +57,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.aiphoto.manager.ui.component.ArtistPreviewDialog
 import com.aiphoto.manager.ui.component.TagChip
+import com.aiphoto.manager.ui.theme.LocalAppColorSet
+import com.aiphoto.manager.ui.theme.tagColorFor
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -76,10 +86,12 @@ fun DetailScreen(
 ) {
     val promptData by viewModel.promptData.collectAsState()
     val favoritePrompts by viewModel.favoritePrompts.collectAsState()
+    val colorSet = LocalAppColorSet.current
     val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var previewArtistTag by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(promptId) {
         viewModel.loadPrompt(promptId)
@@ -111,6 +123,14 @@ fun DetailScreen(
                 }
             },
             shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // 画师预览弹窗
+    previewArtistTag?.let { artist ->
+        ArtistPreviewDialog(
+            artistTag = artist,
+            onDismiss = { previewArtistTag = null }
         )
     }
 
@@ -181,11 +201,20 @@ fun DetailScreen(
 
                 // 描述
                 if (p.description.isNotBlank()) {
-                    Text(
-                        text = p.description,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = p.description,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
@@ -194,6 +223,7 @@ fun DetailScreen(
                     Text(
                         text = "标签",
                         style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -204,7 +234,7 @@ fun DetailScreen(
                         tags.forEach { tag ->
                             TagChip(
                                 text = tag.name,
-                                color = tag.color,
+                                color = tagColorFor(tag.name),
                                 isSelected = false
                             )
                         }
@@ -217,7 +247,7 @@ fun DetailScreen(
                     PromptChipsSection(
                         title = "正向提示词",
                         prompts = p.positivePrompt.split(",").map { it.trim() }.filter { it.isNotBlank() },
-                        color = "#FFC0D0",
+                        color = colorSet.promptChipPositive,
                         promptType = "positive",
                         onCopy = {
                             clipboardManager.setText(AnnotatedString(p.positivePrompt))
@@ -244,7 +274,7 @@ fun DetailScreen(
                     PromptChipsSection(
                         title = "负向提示词",
                         prompts = p.negativePrompt.split(",").map { it.trim() }.filter { it.isNotBlank() },
-                        color = "#D8B4FE",
+                        color = colorSet.promptChipNegative,
                         promptType = "negative",
                         onCopy = {
                             clipboardManager.setText(AnnotatedString(p.negativePrompt))
@@ -266,12 +296,12 @@ fun DetailScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                // 画师
+                // 画师 - 支持点击查看作品
                 if (p.artistPrompt.isNotBlank()) {
                     PromptChipsSection(
                         title = "画师",
                         prompts = p.artistPrompt.split(",").map { it.trim() }.filter { it.isNotBlank() },
-                        color = "#B0D8FF",
+                        color = colorSet.promptChipArtist,
                         promptType = "artist",
                         onCopy = {
                             clipboardManager.setText(AnnotatedString(p.artistPrompt))
@@ -287,6 +317,9 @@ fun DetailScreen(
                         },
                         onFavorite = { content, type ->
                             viewModel.toggleFavoritePrompt(content, type)
+                        },
+                        onArtistClick = { artistTag ->
+                            previewArtistTag = artistTag
                         },
                         favoritePrompts = favoritePrompts
                     )
@@ -350,12 +383,15 @@ private fun PromptChipsSection(
     onCopy: () -> Unit,
     onCopySingle: (String) -> Unit,
     onFavorite: (String, String) -> Unit = { _, _ -> },
+    onArtistClick: ((String) -> Unit)? = null,
     favoritePrompts: Set<String> = emptySet()
 ) {
+    val isArtist = promptType == "artist"
+
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
         ),
         modifier = Modifier
             .fillMaxWidth()
@@ -370,11 +406,22 @@ private fun PromptChipsSection(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    if (isArtist) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "点击查看作品",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "${prompts.size} 个",
@@ -407,6 +454,9 @@ private fun PromptChipsSection(
                             text = prompt,
                             color = color,
                             isSelected = false,
+                            onClick = if (isArtist && onArtistClick != null) {
+                                { onArtistClick(prompt) }
+                            } else null,
                             onLongClick = {
                                 onCopySingle(prompt)
                             },

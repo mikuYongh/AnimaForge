@@ -3,6 +3,10 @@ package com.aiphoto.manager.ui.navigation
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -32,6 +36,8 @@ import com.aiphoto.manager.ui.screen.workflow.WorkflowScreen
 import com.aiphoto.manager.ui.screen.workflow.WorkflowEditScreen
 import com.aiphoto.manager.util.JsonUtil
 
+private const val ANIM_DURATION = 300
+
 @Composable
 fun AppNavGraph() {
     val navController = rememberNavController()
@@ -58,7 +64,35 @@ fun AppNavGraph() {
 
     NavHost(
         navController = navController,
-        startDestination = "home"
+        startDestination = "home",
+        enterTransition = {
+            fadeIn(animationSpec = tween(ANIM_DURATION)) +
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Start,
+                    tween(ANIM_DURATION)
+                )
+        },
+        exitTransition = {
+            fadeOut(animationSpec = tween(ANIM_DURATION)) +
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Start,
+                    tween(ANIM_DURATION)
+                )
+        },
+        popEnterTransition = {
+            fadeIn(animationSpec = tween(ANIM_DURATION)) +
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.End,
+                    tween(ANIM_DURATION)
+                )
+        },
+        popExitTransition = {
+            fadeOut(animationSpec = tween(ANIM_DURATION)) +
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.End,
+                    tween(ANIM_DURATION)
+                )
+        }
     ) {
         composable("home") {
             HomeScreen(
@@ -108,9 +142,7 @@ fun AppNavGraph() {
                     navController.navigate("generate/$id")
                 },
                 onNavigateToCloned = { clonedId ->
-                    // 克隆后导航到克隆的提示词详情页
                     navController.navigate("detail/$clonedId") {
-                        // 弹出当前详情页，避免返回栈中有太多详情页
                         popUpTo("detail/$promptId") { inclusive = true }
                     }
                 }
@@ -131,7 +163,6 @@ fun AppNavGraph() {
             val detailViewModel: DetailViewModel = viewModel()
             val promptData by detailViewModel.promptData.collectAsState()
 
-            // Load the prompt data
             LaunchedEffect(promptId) {
                 detailViewModel.loadPrompt(promptId)
             }
