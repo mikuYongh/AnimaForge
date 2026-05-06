@@ -69,6 +69,7 @@ class ImageGenerationService : Service() {
         const val EXTRA_USE_WORKFLOW_DIMENSIONS = "use_workflow_dimensions"
         const val EXTRA_KSAMPLER_NAME = "ksampler_name"
         const val EXTRA_KSCHEDULER = "kscheduler"
+        const val EXTRA_ARTIST_PROMPT = "artist_prompt"
     }
 
     inner class LocalBinder : Binder() {
@@ -106,6 +107,7 @@ class ImageGenerationService : Service() {
                 val useWorkflowDimensions = intent.getBooleanExtra(EXTRA_USE_WORKFLOW_DIMENSIONS, false)
                 val ksamplerName = intent.getStringExtra(EXTRA_KSAMPLER_NAME) ?: "euler_ancestral"
                 val kscheduler = intent.getStringExtra(EXTRA_KSCHEDULER) ?: "normal"
+                val artistPrompt = intent.getStringExtra(EXTRA_ARTIST_PROMPT) ?: ""
 
                 startGeneration(
                     positivePrompt = positivePrompt,
@@ -124,7 +126,8 @@ class ImageGenerationService : Service() {
                     inputImageUris = inputImageUris,
                     useWorkflowDimensions = useWorkflowDimensions,
                     ksamplerName = ksamplerName,
-                    kscheduler = kscheduler
+                    kscheduler = kscheduler,
+                    artistPrompt = artistPrompt
                 )
             }
             ACTION_STOP_GENERATION -> {
@@ -181,7 +184,8 @@ class ImageGenerationService : Service() {
         inputImageUris: List<String> = emptyList(),
         useWorkflowDimensions: Boolean = false,
         ksamplerName: String = "euler_ancestral",
-        kscheduler: String = "normal"
+        kscheduler: String = "normal",
+        artistPrompt: String = ""
     ) {
         // 启动前台服务
         val notification = createNotification("图片生成中", "准备中...")
@@ -281,7 +285,8 @@ class ImageGenerationService : Service() {
                             inputImageFilename = inputImageFilename,
                             useWorkflowDimensions = useWorkflowDimensions,
                             ksamplerName = ksamplerName,
-                            kscheduler = kscheduler
+                            kscheduler = kscheduler,
+                            artistPrompt = artistPrompt
                         )
 
                         if (promptResult.isFailure) {

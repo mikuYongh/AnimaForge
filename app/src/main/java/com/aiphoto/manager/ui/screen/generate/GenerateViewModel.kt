@@ -454,6 +454,7 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
         useWorkflowDimensions: Boolean = false,
         ksamplerName: String = "euler_ancestral",
         kscheduler: String = "normal",
+        artistPrompt: String = "",
         onSuccess: (String) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -489,6 +490,7 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
             putExtra(ImageGenerationService.EXTRA_USE_WORKFLOW_DIMENSIONS, useWorkflowDimensions)
             putExtra(ImageGenerationService.EXTRA_KSAMPLER_NAME, ksamplerName)
             putExtra(ImageGenerationService.EXTRA_KSCHEDULER, kscheduler)
+            putExtra(ImageGenerationService.EXTRA_ARTIST_PROMPT, artistPrompt)
             putStringArrayListExtra(
                 ImageGenerationService.EXTRA_INPUT_IMAGE_URIS,
                 ArrayList(inputImageUris.map { it.toString() })

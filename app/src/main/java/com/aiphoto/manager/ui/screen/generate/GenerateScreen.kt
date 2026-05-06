@@ -642,6 +642,7 @@ fun GenerateScreen(
                             inputImageUris = selectedInputImages,
                             denoise = denoiseStrength.toDouble(),
                             useWorkflowDimensions = useWorkflowDimensions,
+                            artistPrompt = promptData.prompt.artistPrompt,
                             onSuccess = { message ->
                                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                             },

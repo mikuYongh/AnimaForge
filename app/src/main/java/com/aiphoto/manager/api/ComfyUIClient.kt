@@ -70,19 +70,26 @@ class ComfyUIClient(private val context: Context) {
         customWorkflow: String? = null,
         denoise: Double = 1.0,
         inputImageFilename: String? = null,
-        useWorkflowDimensions: Boolean = false
+        useWorkflowDimensions: Boolean = false,
+        artistPrompt: String = ""
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             val actualSeed = if (seed == -1L) System.currentTimeMillis() else seed
 
+            // 拼接画师到正向提示词
+            val fullPositivePrompt = if (artistPrompt.isNotBlank()) {
+                val trimmed = positivePrompt.trimEnd(',', ' ')
+                if (trimmed.isNotBlank()) "$trimmed, $artistPrompt" else artistPrompt
+            } else {
+                positivePrompt
+            }
+
             val workflowJson = if (customWorkflow != null) {
-                // 使用自定义工作流，智能替换参数
                 val workflowObj = JsonParser.parseString(customWorkflow).asJsonObject
-                smartReplaceWorkflowParams(workflowObj, positivePrompt, negativePrompt, actualSeed, steps, cfgScale, width, height, samplerName, scheduler, ksamplerName, kscheduler, denoise, inputImageFilename, useWorkflowDimensions)
+                smartReplaceWorkflowParams(workflowObj, fullPositivePrompt, negativePrompt, actualSeed, steps, cfgScale, width, height, samplerName, scheduler, ksamplerName, kscheduler, denoise, inputImageFilename, useWorkflowDimensions)
                 gson.toJson(workflowObj)
             } else {
-                // 默认工作流
-                createDefaultWorkflow(positivePrompt, negativePrompt, actualSeed, width, height, steps, cfgScale, samplerName, scheduler)
+                createDefaultWorkflow(fullPositivePrompt, negativePrompt, actualSeed, width, height, steps, cfgScale, samplerName, scheduler)
             }
 
             Log.d("ComfyUIClient", "发送的工作流: $workflowJson")
@@ -216,18 +223,6 @@ class ComfyUIClient(private val context: Context) {
                                 }
                                 if (inputs.has("height")) {
                                     inputs.addProperty("height", height)
-                                }
-                            }
-                        }
-
-                        // SDXLEmptyLatentSizePicker - 尺寸选择器
-                        "SDXLEmptyLatentSizePicker+" -> {
-                            if (!useWorkflowDimensions) {
-                                if (inputs.has("width_override") && width > 0) {
-                                    inputs.addProperty("width_override", width)
-                                }
-                                if (inputs.has("height_override") && height > 0) {
-                                    inputs.addProperty("height_override", height)
                                 }
                             }
                         }
