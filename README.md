@@ -26,7 +26,7 @@
 
 ### 简介
 
-**AnimaForge** 是一款专为 [Anima](https://anima.mooshieblob.com/) 文生图模型设计的 Android 提示词管理工具，深度集成 ComfyUI 工作流，让你在手机上高效管理、创作和生成 AI 图片。
+**AnimaForge** 是一款专为 [Anima](https://huggingface.co/circlestone-labs/Anima) 文生图模型设计的 Android 提示词管理工具，深度集成 ComfyUI 工作流，让你在手机上高效管理、创作和生成 AI 图片。风格数据来自 [Anima Artist Gallery](https://anima.mooshieblob.com/)。
 
 ### 核心功能
 
@@ -49,7 +49,9 @@
 
 ### 致谢
 
-本应用的风格标签数据来源于 **[Anima](https://anima.mooshieblob.com/)** 项目。感谢 Anima 团队为 AI 艺术社区提供的优秀模型与数据支持。
+本应用的风格标签数据来源于 **[Anima Artist Gallery](https://anima.mooshieblob.com/)**。感谢 [@mooshieblob](https://anima.mooshieblob.com/) 精心整理的海量画师风格数据集。
+
+Anima 模型由 **[circlestone-labs](https://huggingface.co/circlestone-labs/Anima)** 开发并开源在 HuggingFace，是一款卓越的动漫风格文生图模型。
 
 ---
 
@@ -57,7 +59,7 @@
 
 ### Introduction
 
-**AnimaForge** is an Android prompt management tool purpose-built for the [Anima](https://anima.mooshieblob.com/) text-to-image model, with deep ComfyUI workflow integration. Manage, craft, and generate AI images right from your phone.
+**AnimaForge** is an Android prompt management tool purpose-built for the [Anima](https://huggingface.co/circlestone-labs/Anima) text-to-image model, with deep ComfyUI workflow integration. Manage, craft, and generate AI images right from your phone. Style data from [Anima Artist Gallery](https://anima.mooshieblob.com/).
 
 ### Core Features
 
@@ -80,7 +82,9 @@
 
 ### Acknowledgments
 
-Artist style data is sourced from the **[Anima](https://anima.mooshieblob.com/)** project. Special thanks to the Anima team for their outstanding model and data contributions to the AI art community.
+Artist style data is sourced from the **[Anima Artist Gallery](https://anima.mooshieblob.com/)**. Huge thanks to [@mooshieblob](https://anima.mooshieblob.com/) for the meticulously curated artist style dataset.
+
+The Anima model is developed and open-sourced by **[circlestone-labs](https://huggingface.co/circlestone-labs/Anima)** on HuggingFace — an outstanding anime-style text-to-image model.
 
 ---
 
@@ -88,7 +92,7 @@ Artist style data is sourced from the **[Anima](https://anima.mooshieblob.com/)*
 
 ### 概要
 
-**AnimaForge** は、[Anima](https://anima.mooshieblob.com/) テキスト画像生成モデル専用の Android プロンプト管理ツールです。ComfyUI ワークフローと深く統合し、スマートフォンから AI 画像の管理・作成・生成を効率的に行えます。
+**AnimaForge** は、[Anima](https://huggingface.co/circlestone-labs/Anima) テキスト画像生成モデル専用の Android プロンプト管理ツールです。ComfyUI ワークフローと深く統合し、スマートフォンから AI 画像の管理・作成・生成を効率的に行えます。スタイルデータは [Anima Artist Gallery](https://anima.mooshieblob.com/) より。
 
 ### 主な機能
 
@@ -111,7 +115,9 @@ Artist style data is sourced from the **[Anima](https://anima.mooshieblob.com/)*
 
 ### 謝辞
 
-本アプリのスタイルタグデータは **[Anima](https://anima.mooshieblob.com/)** プロジェクトから提供されています。Anima チームの AI アートコミュニティへの素晴らしい貢献に感謝いたします。
+本アプリのスタイルタグデータは **[Anima Artist Gallery](https://anima.mooshieblob.com/)** から提供されています。[@mooshieblob](https://anima.mooshieblob.com/) による膨大なアーティストスタイルデータセットに心より感謝します。
+
+Anima モデルは **[circlestone-labs](https://huggingface.co/circlestone-labs/Anima)** によって開発・オープンソース化された、優れたアニメスタイルのテキスト画像生成モデルです。
 
 ---
 
