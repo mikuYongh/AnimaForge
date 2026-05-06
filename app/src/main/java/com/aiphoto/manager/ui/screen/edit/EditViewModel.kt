@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiphoto.manager.App
 import com.aiphoto.manager.api.ComfyUIClient
+import com.aiphoto.manager.api.ArtistApiClient
 import com.aiphoto.manager.data.SettingsManager
 import com.aiphoto.manager.data.local.entity.GeneratedImageEntity
 import com.aiphoto.manager.data.local.entity.PromptEntity
@@ -85,6 +86,20 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
     private val _favoriteNegativePrompts = MutableStateFlow<List<String>>(emptyList())
     val favoriteNegativePrompts: StateFlow<List<String>> = _favoriteNegativePrompts
 
+    private val _favoriteArtistPrompts = MutableStateFlow<List<String>>(emptyList())
+    val favoriteArtistPrompts: StateFlow<List<String>> = _favoriteArtistPrompts
+
+    private val artistApiClient = ArtistApiClient()
+
+    private val _artistList = MutableStateFlow<List<com.aiphoto.manager.data.model.Artist>>(emptyList())
+    val artistList: StateFlow<List<com.aiphoto.manager.data.model.Artist>> = _artistList
+
+    private val _artistListLoading = MutableStateFlow(false)
+    val artistListLoading: StateFlow<Boolean> = _artistListLoading
+
+    private val _artistPrompt = MutableStateFlow("")
+    val artistPrompt: StateFlow<String> = _artistPrompt
+
     val comfyUiUrl: StateFlow<String> = settingsManager.comfyUiUrl
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "http://192.168.123.178:8188")
 
@@ -112,6 +127,7 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
         _cfgScale.value = promptWithTags.prompt.cfgScale
         _selectedTags.value = promptWithTags.tags
         _imagePaths.value = promptWithTags.images.map { it.imagePath }
+        _artistPrompt.value = promptWithTags.prompt.artistPrompt
     }
 
     fun onTitleChange(v: String) { _title.value = v }
@@ -167,6 +183,20 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
             (getApplication<Application>() as App).database.favoritePromptDao().getAll().collect { favorites ->
                 _favoritePositivePrompts.value = favorites.filter { it.type == "positive" }.map { it.content }
                 _favoriteNegativePrompts.value = favorites.filter { it.type == "negative" }.map { it.content }
+                _favoriteArtistPrompts.value = favorites.filter { it.type == "artist" }.map { it.content }
+            }
+        }
+    }
+
+    fun onArtistPromptChange(v: String) { _artistPrompt.value = v }
+
+    fun loadArtistList() {
+        viewModelScope.launch {
+            _artistListLoading.value = true
+            val result = artistApiClient.fetchArtists()
+            _artistListLoading.value = false
+            if (result.isSuccess) {
+                _artistList.value = result.getOrDefault(emptyList())
             }
         }
     }
@@ -212,6 +242,7 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
                 cfgScale = _cfgScale.value,
                 isFavorite = if (isNew) false else originalIsFavorite,
                 isPinned = if (isNew) false else originalIsPinned,
+                artistPrompt = _artistPrompt.value,
                 createdAt = if (isNew) now else originalCreatedAt,
                 updatedAt = now
             )

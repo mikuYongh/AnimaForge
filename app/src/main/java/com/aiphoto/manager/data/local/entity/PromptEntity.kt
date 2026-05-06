@@ -20,6 +20,7 @@ data class PromptEntity(
     val cfgScale: Double = 5.5,
     val isFavorite: Boolean = false,
     val isPinned: Boolean = false,
+    val artistPrompt: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

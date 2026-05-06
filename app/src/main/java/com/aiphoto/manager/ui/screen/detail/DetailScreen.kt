@@ -266,6 +266,33 @@ fun DetailScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
+                // 画师
+                if (p.artistPrompt.isNotBlank()) {
+                    PromptChipsSection(
+                        title = "画师",
+                        prompts = p.artistPrompt.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                        color = "#B0D8FF",
+                        promptType = "artist",
+                        onCopy = {
+                            clipboardManager.setText(AnnotatedString(p.artistPrompt))
+                            scope.launch {
+                                snackbarHostState.showSnackbar("已复制！")
+                            }
+                        },
+                        onCopySingle = { prompt ->
+                            clipboardManager.setText(AnnotatedString(prompt))
+                            scope.launch {
+                                snackbarHostState.showSnackbar("已复制: $prompt")
+                            }
+                        },
+                        onFavorite = { content, type ->
+                            viewModel.toggleFavoritePrompt(content, type)
+                        },
+                        favoritePrompts = favoritePrompts
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 // 种子值和参数
                 if (p.seed.isNotBlank() || p.parameters.isNotBlank()) {
                     OutlinedCard(

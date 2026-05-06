@@ -2,6 +2,10 @@ package com.aiphoto.manager.ui.screen.edit
 
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +22,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -27,12 +35,14 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -58,10 +68,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.aiphoto.manager.data.model.PromptWithTags
 import com.aiphoto.manager.ui.component.ImagePicker
 import com.aiphoto.manager.ui.component.TagChip
@@ -90,6 +107,9 @@ fun EditScreen(
     val cfgScale by viewModel.cfgScale.collectAsState()
     val favoritePositivePrompts by viewModel.favoritePositivePrompts.collectAsState()
     val favoriteNegativePrompts by viewModel.favoriteNegativePrompts.collectAsState()
+    val favoriteArtistPrompts by viewModel.favoriteArtistPrompts.collectAsState()
+    val artistList by viewModel.artistList.collectAsState()
+    val artistListLoading by viewModel.artistListLoading.collectAsState()
 
     // 提示词列表状态
     var positiveSingleInput by remember { mutableStateOf("") }
@@ -98,14 +118,19 @@ fun EditScreen(
     var negativeBatchInput by remember { mutableStateOf("") }
     val positivePromptList = remember { mutableStateListOf<String>() }
     val negativePromptList = remember { mutableStateListOf<String>() }
+    val artistPromptList = remember { mutableStateListOf<String>() }
+    var artistSingleInput by remember { mutableStateOf("") }
 
     // 设置对话框
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showAdvancedSettings by remember { mutableStateOf(false) }
     var showFavoritePositiveDialog by remember { mutableStateOf(false) }
     var showFavoriteNegativeDialog by remember { mutableStateOf(false) }
+    var showFavoriteArtistDialog by remember { mutableStateOf(false) }
+    var showArtistPickerDialog by remember { mutableStateOf(false) }
     val selectedFavoritePositive = remember { mutableStateListOf<String>() }
     val selectedFavoriteNegative = remember { mutableStateListOf<String>() }
+    val selectedFavoriteArtist = remember { mutableStateListOf<String>() }
 
     // 加载现有数据
     LaunchedEffect(existingPrompt) {
@@ -118,6 +143,10 @@ fun EditScreen(
             if (existingPrompt.prompt.negativePrompt.isNotBlank()) {
                 negativePromptList.clear()
                 negativePromptList.addAll(parsePrompts(existingPrompt.prompt.negativePrompt))
+            }
+            if (existingPrompt.prompt.artistPrompt.isNotBlank()) {
+                artistPromptList.clear()
+                artistPromptList.addAll(parsePrompts(existingPrompt.prompt.artistPrompt))
             }
         } else if (initialPositivePrompt.isNotBlank()) {
             positivePromptList.addAll(parsePrompts(initialPositivePrompt))
@@ -190,6 +219,39 @@ fun EditScreen(
                 showFavoriteNegativeDialog = false
                 selectedFavoriteNegative.clear()
             }
+        )
+    }
+
+    // 收藏画师对话框
+    if (showFavoriteArtistDialog) {
+        FavoritePromptDialog(
+            title = "选择画师收藏",
+            favoritePrompts = favoriteArtistPrompts,
+            selectedPrompts = selectedFavoriteArtist,
+            onDismiss = {
+                showFavoriteArtistDialog = false
+                selectedFavoriteArtist.clear()
+            },
+            onConfirm = {
+                selectedFavoriteArtist.forEach { prompt ->
+                    if (artistPromptList.none { it.equals(prompt, ignoreCase = true) }) {
+                        artistPromptList.add(prompt)
+                    }
+                }
+                showFavoriteArtistDialog = false
+                selectedFavoriteArtist.clear()
+            }
+        )
+    }
+
+    // 画师库选择对话框
+    if (showArtistPickerDialog) {
+        ArtistPickerDialog(
+            artists = artistList,
+            isLoading = artistListLoading,
+            selectedArtists = artistPromptList,
+            onDismiss = { showArtistPickerDialog = false },
+            onConfirm = { showArtistPickerDialog = false }
         )
     }
 
@@ -536,6 +598,105 @@ fun EditScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 画师区域
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "画师",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row {
+                    TextButton(onClick = {
+                        viewModel.loadArtistList()
+                        showArtistPickerDialog = true
+                    }) {
+                        Text("画师库")
+                    }
+                    TextButton(onClick = { showFavoriteArtistDialog = true }) {
+                        Text("收藏 (${favoriteArtistPrompts.size})")
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 画师添加输入框
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = artistSingleInput,
+                    onValueChange = { artistSingleInput = it },
+                    placeholder = { Text("输入画师tag，如 @dairi") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.weight(1f),
+                    singleLine = true
+                )
+                FilledTonalButton(
+                    onClick = {
+                        if (artistSingleInput.isNotBlank()) {
+                            val trimmed = artistSingleInput.trim()
+                            if (artistPromptList.none { it.equals(trimmed, ignoreCase = true) }) {
+                                artistPromptList.add(trimmed)
+                            }
+                            artistSingleInput = ""
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("添加")
+                }
+            }
+
+            // 画师芯片显示
+            if (artistPromptList.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "${artistPromptList.size} 个画师",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    TextButton(
+                        onClick = { artistPromptList.clear() },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("清空")
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    artistPromptList.forEachIndexed { index, artist ->
+                        TagChip(
+                            text = artist,
+                            color = "#B0D8FF",
+                            isSelected = false,
+                            onRemove = { artistPromptList.removeAt(index) }
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // 保存按钮
@@ -652,6 +813,7 @@ fun EditScreen(
                 onClick = {
                     viewModel.onPositivePromptChange(positivePromptList.joinToString(", "))
                     viewModel.onNegativePromptChange(negativePromptList.joinToString(", "))
+                    viewModel.onArtistPromptChange(artistPromptList.joinToString(", "))
                     viewModel.savePrompt(onNavigateBack)
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -815,4 +977,257 @@ private fun parsePrompts(text: String): List<String> {
         .map { it.trim() }
         .filter { it.isNotBlank() }
         .distinct()
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
+@Composable
+fun ArtistPickerDialog(
+    artists: List<com.aiphoto.manager.data.model.Artist>,
+    isLoading: Boolean,
+    selectedArtists: MutableList<String>,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var sortByPostCount by remember { mutableStateOf(true) }
+    var visibleCount by remember { mutableStateOf(200) }
+    var previewArtist by remember { mutableStateOf<com.aiphoto.manager.data.model.Artist?>(null) }
+
+    val filteredArtists = remember(artists, searchQuery, sortByPostCount) {
+        val list = if (searchQuery.isBlank()) artists
+        else artists.filter {
+            it.tag.contains(searchQuery, ignoreCase = true) ||
+                it.slug.contains(searchQuery, ignoreCase = true)
+        }
+        if (sortByPostCount) list.sortedByDescending { it.postCount }
+        else list.sortedBy { it.slug.lowercase() }
+    }
+
+    val displayArtists = remember(filteredArtists, visibleCount) {
+        filteredArtists.take(visibleCount)
+    }
+
+    // 搜索或排序变化时重置分页
+    LaunchedEffect(searchQuery, sortByPostCount) {
+        visibleCount = 200
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择画师") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 500.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("搜索画师...") },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = !sortByPostCount,
+                        onClick = { sortByPostCount = false },
+                        label = { Text("按名称") }
+                    )
+                    FilterChip(
+                        selected = sortByPostCount,
+                        onClick = { sortByPostCount = true },
+                        label = { Text("按热度") }
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else if (filteredArtists.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("无结果", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        item {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                displayArtists.forEach { artist ->
+                                    val isSelected = artist.tag in selectedArtists
+                                    Column(
+                                        modifier = Modifier
+                                            .width(80.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .then(
+                                                if (isSelected) Modifier.background(MaterialTheme.colorScheme.primaryContainer)
+                                                else Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                                            )
+                                            .combinedClickable(
+                                                onClick = {
+                                                    if (isSelected) {
+                                                        selectedArtists.remove(artist.tag)
+                                                    } else {
+                                                        selectedArtists.add(artist.tag)
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    previewArtist = artist
+                                                }
+                                            )
+                                            .padding(6.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        if (artist.hasImage) {
+                                            AsyncImage(
+                                                model = com.aiphoto.manager.api.ArtistApiClient.getImageUrl(artist.imageId),
+                                                contentDescription = artist.slug,
+                                                modifier = Modifier
+                                                    .size(56.dp)
+                                                    .clip(RoundedCornerShape(6.dp)),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(56.dp)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(MaterialTheme.colorScheme.outlineVariant),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Person,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(28.dp),
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            artist.tag,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Text(
+                                            "${artist.postCount}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 9.sp
+                                        )
+                                        if (isSelected) {
+                                            Icon(
+                                                Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (visibleCount < filteredArtists.size) {
+                            item {
+                                TextButton(
+                                    onClick = { visibleCount += 200 },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("加载更多 (${filteredArtists.size - visibleCount} 个剩余)")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                enabled = true
+            ) {
+                Text("完成")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+
+    // 长按预览大图
+    previewArtist?.let { artist ->
+        Dialog(onDismissRequest = { previewArtist = null }) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.wrapContentSize().padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (artist.hasImage) {
+                        AsyncImage(
+                            model = com.aiphoto.manager.api.ArtistApiClient.getImageUrl(artist.imageId),
+                            contentDescription = artist.slug,
+                            modifier = Modifier
+                                .size(256.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(256.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.outlineVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(96.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        artist.tag,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        "${artist.postCount} 作品",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
 }
