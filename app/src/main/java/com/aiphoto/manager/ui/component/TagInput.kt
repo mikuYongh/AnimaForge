@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.aiphoto.manager.data.local.entity.TagEntity
+import com.aiphoto.manager.ui.theme.tagColorFor
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -141,7 +142,7 @@ fun TagInput(
                 tags.forEach { tag ->
                     TagChip(
                         text = tag.name,
-                        color = tag.color,
+                        color = tagColorFor(tag.name),
                         isSelected = true,
                         onRemove = { onTagRemoved(tag.id) }
                     )

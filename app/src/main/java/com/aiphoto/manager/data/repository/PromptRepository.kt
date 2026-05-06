@@ -103,7 +103,7 @@ class PromptRepository(
     // Tag operations
     fun getAllTags(): Flow<List<TagEntity>> = tagDao.getAllTags()
 
-    suspend fun getOrCreateTag(name: String, color: String = "#FF6B9D"): TagEntity {
+    suspend fun getOrCreateTag(name: String, color: String = "#93C5FD"): TagEntity {
         val existing = tagDao.getTagByName(name)
         if (existing != null) return existing
 

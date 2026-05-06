@@ -144,16 +144,10 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
     fun addTag(tagName: String) {
         viewModelScope.launch {
             try {
-                val tempTag = TagEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = tagName,
-                    color = "#FF6B9D"
-                )
-
                 val currentTags = _selectedTags.value
                 if (currentTags.none { it.name.equals(tagName, ignoreCase = true) }) {
-                    _selectedTags.value = currentTags + tempTag
-                    repository.getOrCreateTag(tagName)
+                    val realTag = repository.getOrCreateTag(tagName)
+                    _selectedTags.value = currentTags + realTag
                 }
             } catch (e: Exception) {
                 Log.e("EditViewModel", "添加标签失败", e)
