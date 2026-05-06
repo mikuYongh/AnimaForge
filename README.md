@@ -14,9 +14,9 @@
 
 <div align="center">
 
-| 主页 Home | 侧边栏 Drawer | 编辑 Editor | 详情 Detail | 设置 Settings |
+| 详情 Detail | 生成 Generate | 主页 Home | 侧边栏 Drawer | 风格 Style |
 |:---:|:---:|:---:|:---:|:---:|
-| ![主页](p1.png) | ![侧边栏](p2.png) | ![编辑](p3.png) | ![详情](p4.png) | ![设置](p5.png) |
+| ![详情](p1.png) | ![生成](p2.png) | ![主页](p3.png) | ![侧边栏](p4.png) | ![风格](p5.png) |
 
 </div>
 
