@@ -296,10 +296,10 @@ fun DetailScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                // 画师 - 支持点击查看作品
+                // 风格 - 支持点击查看作品
                 if (p.artistPrompt.isNotBlank()) {
                     PromptChipsSection(
-                        title = "画师",
+                        title = "风格",
                         prompts = p.artistPrompt.split(",").map { it.trim() }.filter { it.isNotBlank() },
                         color = colorSet.promptChipArtist,
                         promptType = "artist",

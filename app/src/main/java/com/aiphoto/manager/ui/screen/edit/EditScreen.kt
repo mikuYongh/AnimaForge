@@ -215,7 +215,7 @@ fun EditScreen(
     }
     if (showFavoriteArtistDialog) {
         FavoritePromptDialog(
-            title = "选择画师收藏",
+            title = "选择风格收藏",
             favoritePrompts = favoriteArtistPrompts,
             selectedPrompts = selectedFavoriteArtist,
             onDismiss = { showFavoriteArtistDialog = false; selectedFavoriteArtist.clear() },
@@ -363,7 +363,8 @@ fun EditScreen(
                     }
                 },
                 onClear = { positivePromptList.clear() },
-                onShowFavorites = { showFavoritePositiveDialog = true }
+                onShowFavorites = { showFavoritePositiveDialog = true },
+                onRemoveItem = { positivePromptList.removeAt(it) }
             )
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -400,15 +401,16 @@ fun EditScreen(
                     }
                 },
                 onClear = { negativePromptList.clear() },
-                onShowFavorites = { showFavoriteNegativeDialog = true }
+                onShowFavorites = { showFavoriteNegativeDialog = true },
+                onRemoveItem = { negativePromptList.removeAt(it) }
             )
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 画师
+            // 风格
             PromptSectionCard(
                 icon = Icons.Default.Person,
-                title = "画师",
+                title = "风格",
                 gradientColors = listOf("#6EC6F8", "#22D3EE"),
                 chipColor = colorSet.promptChipArtist,
                 promptList = artistPromptList,
@@ -429,6 +431,7 @@ fun EditScreen(
                 onParseBatch = { },
                 onClear = { artistPromptList.clear() },
                 onShowFavorites = { showFavoriteArtistDialog = true },
+                onRemoveItem = { artistPromptList.removeAt(it) },
                 extraActions = {
                     TextButton(onClick = {
                         viewModel.loadArtistList()
@@ -436,11 +439,11 @@ fun EditScreen(
                     }) {
                         Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("画师库")
+                        Text("风格库")
                     }
                 },
-                chipLabelSingular = "画师",
-                chipLabelPlural = "个画师"
+                chipLabelSingular = "风格",
+                chipLabelPlural = "个风格"
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -614,6 +617,7 @@ private fun PromptSectionCard(
     onParseBatch: () -> Unit,
     onClear: () -> Unit,
     onShowFavorites: () -> Unit,
+    onRemoveItem: (Int) -> Unit = {},
     extraActions: (@Composable () -> Unit)? = null,
     chipLabelSingular: String = "提示词",
     chipLabelPlural: String = "个提示词"
@@ -739,7 +743,7 @@ private fun PromptSectionCard(
                             text = prompt,
                             color = chipColor,
                             isSelected = false,
-                            onRemove = null
+                            onRemove = { onRemoveItem(index) }
                         )
                     }
                 }
@@ -931,7 +935,7 @@ fun ArtistPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择画师") },
+        title = { Text("选择风格") },
         text = {
             Column(
                 modifier = Modifier
@@ -941,7 +945,7 @@ fun ArtistPickerDialog(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("搜索画师...") },
+                    placeholder = { Text("搜索风格...") },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true

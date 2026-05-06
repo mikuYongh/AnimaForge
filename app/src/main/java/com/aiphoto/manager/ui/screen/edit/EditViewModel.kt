@@ -240,8 +240,14 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
                 createdAt = if (isNew) now else originalCreatedAt,
                 updatedAt = now
             )
-            val tagIds = _selectedTags.value.map { it.id }
             val imagePaths = _imagePaths.value
+
+            // 确保所有标签都已持久化到 DB，避免 FOREIGN KEY 约束失败
+            val resolvedTags = _selectedTags.value.map { tag ->
+                repository.getOrCreateTag(tag.name, tag.color)
+            }
+            val tagIds = resolvedTags.map { it.id }
+            _selectedTags.value = resolvedTags
 
             if (isNew) {
                 repository.savePrompt(prompt, tagIds, imagePaths)

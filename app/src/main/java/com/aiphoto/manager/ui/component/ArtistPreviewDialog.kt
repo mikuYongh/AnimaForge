@@ -81,7 +81,7 @@ fun ArtistPreviewDialog(
                             it.slug.contains(cleanTag, ignoreCase = true)
                     }
                     if (matches.isEmpty()) {
-                        errorMsg = "未找到画师「$artistTag」的作品"
+                        errorMsg = "未找到风格「$artistTag」的作品"
                     } else {
                         artists = matches
                     }
@@ -110,7 +110,7 @@ fun ArtistPreviewDialog(
                 TopAppBar(
                     title = {
                         Text(
-                            "画师「$artistTag」",
+                            "风格「$artistTag」",
                             style = MaterialTheme.typography.titleMedium
                         )
                     },
@@ -141,7 +141,7 @@ fun ArtistPreviewDialog(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    "正在查询画师作品...",
+                                    "正在查询风格作品...",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

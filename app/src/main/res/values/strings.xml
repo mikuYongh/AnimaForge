@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">AI提示词管理器</string>
+    <string name="app_name">AnimaForge</string>
     <string name="search_hint">搜索提示词...</string>
     <string name="add_prompt">添加提示词</string>
     <string name="edit_prompt">编辑提示词</string>

@@ -114,7 +114,7 @@ fun HomeScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            "AI提示词管理器",
+                            "AnimaForge",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -248,7 +248,7 @@ private fun AppDrawer(
         ) {
             Column {
                 Text(
-                    "\u2728 AI提示词管理器",
+                    "\u2728 AnimaForge",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
