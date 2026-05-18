@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
@@ -61,6 +63,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -68,9 +71,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -87,8 +92,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.aiphoto.manager.data.model.PromptWithTags
+import com.aiphoto.manager.ui.component.ArtistPreviewDialog
 import com.aiphoto.manager.ui.component.ImagePicker
 import com.aiphoto.manager.ui.component.TagChip
+import kotlinx.coroutines.launch
 import com.aiphoto.manager.ui.component.TagInput
 import com.aiphoto.manager.ui.theme.LocalAppColorSet
 
@@ -130,7 +137,6 @@ fun EditScreen(
     var artistSingleInput by remember { mutableStateOf("") }
 
     var showSettingsDialog by remember { mutableStateOf(false) }
-    var showAdvancedSettings by remember { mutableStateOf(false) }
     var showFavoritePositiveDialog by remember { mutableStateOf(false) }
     var showFavoriteNegativeDialog by remember { mutableStateOf(false) }
     var showFavoriteArtistDialog by remember { mutableStateOf(false) }
@@ -215,7 +221,7 @@ fun EditScreen(
     }
     if (showFavoriteArtistDialog) {
         FavoritePromptDialog(
-            title = "选择风格收藏",
+            title = "选择画师收藏",
             favoritePrompts = favoriteArtistPrompts,
             selectedPrompts = selectedFavoriteArtist,
             onDismiss = { showFavoriteArtistDialog = false; selectedFavoriteArtist.clear() },
@@ -235,7 +241,13 @@ fun EditScreen(
             isLoading = artistListLoading,
             selectedArtists = artistPromptList,
             onDismiss = { showArtistPickerDialog = false },
-            onConfirm = { showArtistPickerDialog = false }
+            onConfirm = { showArtistPickerDialog = false },
+            searchQuery = viewModel.artistSearchQuery,
+            onSearchChange = { viewModel.artistSearchQuery = it },
+            sortByPostCount = viewModel.artistSortByPostCount,
+            onSortChange = { viewModel.artistSortByPostCount = it },
+            visibleCount = viewModel.artistVisibleCount,
+            onVisibleCountChange = { viewModel.artistVisibleCount = it }
         )
     }
 
@@ -407,10 +419,10 @@ fun EditScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 风格
+            // 画师
             PromptSectionCard(
                 icon = Icons.Default.Person,
-                title = "风格",
+                title = "画师",
                 gradientColors = listOf("#6EC6F8", "#22D3EE"),
                 chipColor = colorSet.promptChipArtist,
                 promptList = artistPromptList,
@@ -439,117 +451,14 @@ fun EditScreen(
                     }) {
                         Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("风格库")
+                        Text("画师库")
                     }
                 },
-                chipLabelSingular = "风格",
-                chipLabelPlural = "个风格"
+                chipLabelSingular = "画师",
+                chipLabelPlural = "个画师"
             )
 
             Spacer(modifier = Modifier.height(20.dp))
-
-            // 更多设置
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                )
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showAdvancedSettings = !showAdvancedSettings }
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Tune,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "更多设置",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Icon(
-                            if (showAdvancedSettings) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = if (showAdvancedSettings) "收起" else "展开",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    if (showAdvancedSettings) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = width.toString(),
-                                onValueChange = {
-                                    val value = it.toIntOrNull()
-                                    if (value != null && value > 0) viewModel.onWidthChange(value)
-                                },
-                                label = { Text("宽度") },
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.weight(1f),
-                                singleLine = true
-                            )
-                            OutlinedTextField(
-                                value = height.toString(),
-                                onValueChange = {
-                                    val value = it.toIntOrNull()
-                                    if (value != null && value > 0) viewModel.onHeightChange(value)
-                                },
-                                label = { Text("高度") },
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.weight(1f),
-                                singleLine = true
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = steps.toString(),
-                                onValueChange = {
-                                    val value = it.toIntOrNull()
-                                    if (value != null && value > 0) viewModel.onStepsChange(value)
-                                },
-                                label = { Text("步数") },
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.weight(1f),
-                                singleLine = true
-                            )
-                            OutlinedTextField(
-                                value = cfgScale.toString(),
-                                onValueChange = {
-                                    val value = it.toDoubleOrNull()
-                                    if (value != null && value > 0) viewModel.onCfgScaleChange(value)
-                                },
-                                label = { Text("CFG Scale") },
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.weight(1f),
-                                singleLine = true
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             // 保存按钮
             Button(
@@ -810,9 +719,18 @@ fun FavoritePromptDialog(
     onConfirm: () -> Unit
 ) {
     val isPositive = title.contains("正向")
+    val isArtist = title.contains("画师")
     val appColorSet = LocalAppColorSet.current
     val selectedColor = if (isPositive) appColorSet.promptChipPositive else appColorSet.promptChipNegative
     val unselectedColor = if (isPositive) "#B3D8F7" else "#DDD6FE"
+    var previewArtistTag by remember { mutableStateOf<String?>(null) }
+
+    if (previewArtistTag != null) {
+        ArtistPreviewDialog(
+            artistTag = previewArtistTag!!,
+            onDismiss = { previewArtistTag = null }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -868,7 +786,8 @@ fun FavoritePromptDialog(
                                     } else {
                                         selectedPrompts.add(prompt)
                                     }
-                                }
+                                },
+                                onLongClick = if (isArtist) {{ previewArtistTag = prompt }} else null
                             )
                         }
                     }
@@ -908,12 +827,17 @@ fun ArtistPickerDialog(
     isLoading: Boolean,
     selectedArtists: MutableList<String>,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
+    searchQuery: String = "",
+    onSearchChange: (String) -> Unit = {},
+    sortByPostCount: Boolean = true,
+    onSortChange: (Boolean) -> Unit = {},
+    visibleCount: Int = 200,
+    onVisibleCountChange: (Int) -> Unit = {}
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var sortByPostCount by remember { mutableStateOf(true) }
-    var visibleCount by remember { mutableStateOf(200) }
     var previewArtist by remember { mutableStateOf<com.aiphoto.manager.data.model.Artist?>(null) }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     val filteredArtists = remember(artists, searchQuery, sortByPostCount) {
         val list = if (searchQuery.isBlank()) artists
@@ -929,13 +853,11 @@ fun ArtistPickerDialog(
         filteredArtists.take(visibleCount)
     }
 
-    LaunchedEffect(searchQuery, sortByPostCount) {
-        visibleCount = 200
-    }
+    val showBackToTop by remember { derivedStateOf { listState.firstVisibleItemIndex > 4 } }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择风格") },
+        title = { Text("选择画师") },
         text = {
             Column(
                 modifier = Modifier
@@ -944,8 +866,11 @@ fun ArtistPickerDialog(
             ) {
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("搜索风格...") },
+                    onValueChange = {
+                        onSearchChange(it)
+                        if (searchQuery != it) onVisibleCountChange(200)
+                    },
+                    placeholder = { Text("搜索画师...") },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -958,12 +883,18 @@ fun ArtistPickerDialog(
                 ) {
                     FilterChip(
                         selected = !sortByPostCount,
-                        onClick = { sortByPostCount = false },
+                        onClick = {
+                            if (sortByPostCount) onVisibleCountChange(200)
+                            onSortChange(false)
+                        },
                         label = { Text("按名称") }
                     )
                     FilterChip(
                         selected = sortByPostCount,
-                        onClick = { sortByPostCount = true },
+                        onClick = {
+                            if (!sortByPostCount) onVisibleCountChange(200)
+                            onSortChange(true)
+                        },
                         label = { Text("按热度") }
                     )
                 }
@@ -984,10 +915,12 @@ fun ArtistPickerDialog(
                         Text("无结果", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
+                    Box {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
                         item {
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1074,13 +1007,30 @@ fun ArtistPickerDialog(
                         if (visibleCount < filteredArtists.size) {
                             item {
                                 TextButton(
-                                    onClick = { visibleCount += 200 },
+                                    onClick = { onVisibleCountChange(visibleCount + 200) },
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text("加载更多 (${filteredArtists.size - visibleCount} 个剩余)")
                                 }
                             }
                         }
+                    }
+                    // 回到顶部按钮
+                    if (showBackToTop) {
+                        SmallFloatingActionButton(
+                            onClick = {
+                                scope.launch {
+                                    listState.animateScrollToItem(0)
+                                }
+                            },
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(12.dp),
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Icon(Icons.Default.KeyboardArrowUp, "回到顶部")
+                        }
+                    }
                     }
                 }
             }

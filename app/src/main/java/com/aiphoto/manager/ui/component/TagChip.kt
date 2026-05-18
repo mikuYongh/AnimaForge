@@ -93,7 +93,7 @@ fun TagChip(
                 maxLines = 1,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
-                    .widthIn(min = 60.dp)
+                    .widthIn(min = 36.dp)
                     .then(
                         if (text.length > 20) Modifier.basicMarquee()
                         else Modifier

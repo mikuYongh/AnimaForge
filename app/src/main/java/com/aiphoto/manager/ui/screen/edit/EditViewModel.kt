@@ -3,6 +3,9 @@ package com.aiphoto.manager.ui.screen.edit
 import android.app.Application
 import android.net.Uri
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiphoto.manager.App
@@ -96,6 +99,11 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _artistListLoading = MutableStateFlow(false)
     val artistListLoading: StateFlow<Boolean> = _artistListLoading
+
+    // 画师选择器持久化状态
+    var artistSearchQuery by mutableStateOf("")
+    var artistSortByPostCount by mutableStateOf(true)
+    var artistVisibleCount by mutableStateOf(200)
 
     private val _artistPrompt = MutableStateFlow("")
     val artistPrompt: StateFlow<String> = _artistPrompt
