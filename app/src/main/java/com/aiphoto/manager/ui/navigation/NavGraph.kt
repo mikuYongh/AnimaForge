@@ -34,7 +34,10 @@ import com.aiphoto.manager.ui.screen.settings.SettingsScreen
 import com.aiphoto.manager.ui.screen.template.TemplateScreen
 import com.aiphoto.manager.ui.screen.workflow.WorkflowScreen
 import com.aiphoto.manager.ui.screen.workflow.WorkflowEditScreen
+import com.aiphoto.manager.ui.screen.video.VideoGenerateScreen
 import com.aiphoto.manager.util.JsonUtil
+import java.net.URLDecoder
+import java.net.URLEncoder
 
 private const val ANIM_DURATION = 300
 
@@ -117,6 +120,9 @@ fun AppNavGraph() {
                 },
                 onNavigateToComfyUIHistory = {
                     navController.navigate("comfyui_history")
+                },
+                onNavigateToVideo = {
+                    navController.navigate("video")
                 },
                 onExport = {
                     exportLauncher.launch("ai_prompts_export.json")
@@ -224,7 +230,10 @@ fun AppNavGraph() {
 
         composable("history") {
             GeneratedHistoryScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToVideo = { path ->
+                    navController.navigate("video/${URLEncoder.encode(path, "UTF-8")}")
+                }
             )
         }
 
@@ -254,6 +263,26 @@ fun AppNavGraph() {
 
             GenerateScreen(
                 promptData = promptData,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToVideo = { path ->
+                    navController.navigate("video/${URLEncoder.encode(path, "UTF-8")}")
+                }
+            )
+        }
+
+        composable("video") {
+            VideoGenerateScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "video/{imagePath}",
+            arguments = listOf(navArgument("imagePath") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val imagePath = backStackEntry.arguments?.getString("imagePath")?.let { URLDecoder.decode(it, "UTF-8") }
+            VideoGenerateScreen(
+                imagePath = imagePath,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

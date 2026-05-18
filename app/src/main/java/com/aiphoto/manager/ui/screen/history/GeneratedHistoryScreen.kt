@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -59,7 +60,8 @@ class GeneratedHistoryViewModel(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun GeneratedHistoryScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToVideo: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val viewModel: GeneratedHistoryViewModel = viewModel(
@@ -176,6 +178,18 @@ fun GeneratedHistoryScreen(
                             }
                         ) {
                             Text("保存到相册")
+                        }
+                        FilledTonalButton(
+                            onClick = {
+                                val path = previewImagePath
+                                showImagePreview = false
+                                previewImagePath = null
+                                if (path != null) onNavigateToVideo(path)
+                            }
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("转视频")
                         }
                     }
 

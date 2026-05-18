@@ -9,7 +9,8 @@ data class WorkflowEntity(
     val id: String,
     val name: String,
     val description: String = "",
-    val workflowJson: String,  // ComfyUI 工作流 JSON
+    val workflowJson: String,
+    val type: String = "text2img",
     val isDefault: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )

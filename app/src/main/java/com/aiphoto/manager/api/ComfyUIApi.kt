@@ -15,6 +15,9 @@ interface ComfyUIApi {
     @GET("history/{promptId}")
     suspend fun getHistory(@Path("promptId") promptId: String): Response<Map<String, HistoryResponse>>
 
+    @GET("history/{promptId}")
+    suspend fun getHistoryRaw(@Path("promptId") promptId: String): Response<ResponseBody>
+
     @GET("history")
     suspend fun getHistory(@Query("max_items") maxItems: Int): Response<JsonObject>
 

@@ -15,6 +15,9 @@ interface WorkflowDao {
     @Query("SELECT * FROM workflows ORDER BY isDefault DESC, name")
     fun getAllWorkflows(): Flow<List<WorkflowEntity>>
 
+    @Query("SELECT * FROM workflows WHERE type = :type ORDER BY isDefault DESC, name")
+    fun getWorkflowsByType(type: String): Flow<List<WorkflowEntity>>
+
     @Query("SELECT * FROM workflows WHERE id = :workflowId")
     suspend fun getWorkflowById(workflowId: String): WorkflowEntity?
 

@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <files-path name="prompt_images" path="prompt_images" />
+    <files-path name="video" path="video" />
+    <files-path name="images" path="images" />
     <external-files-path name="images" path="Pictures" />
+    <external-path name="movies" path="Movies/AnimaForge" />
     <cache-path name="cache" path="." />
 </paths>

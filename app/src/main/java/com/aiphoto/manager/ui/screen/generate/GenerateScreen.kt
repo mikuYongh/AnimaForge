@@ -5,6 +5,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -14,13 +15,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -64,12 +69,14 @@ import java.io.File
 fun GenerateScreen(
     promptData: PromptWithTags?,
     onNavigateBack: () -> Unit,
+    onNavigateToVideo: (String) -> Unit = {},
     viewModel: GenerateViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val workflows by viewModel.workflows.collectAsState()
     val isGenerating by viewModel.isGenerating.collectAsState()
     val progress by viewModel.progress.collectAsState()
+    val progressPercent by viewModel.progressPercent.collectAsState()
     val generatedImages by viewModel.generatedImages.collectAsState()
     val selectedSampler by viewModel.selectedSampler.collectAsState()
     val selectedScheduler by viewModel.selectedScheduler.collectAsState()
@@ -96,6 +103,11 @@ fun GenerateScreen(
     var selectedInputImages by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var denoiseStrength by remember { mutableStateOf(0.75f) }
     var useWorkflowDimensions by remember { mutableStateOf(false) }
+    var genWidth by remember { mutableStateOf("896") }
+    var genHeight by remember { mutableStateOf("1088") }
+    var genSteps by remember { mutableStateOf("30") }
+    var genCfgScale by remember { mutableStateOf("5.5") }
+    var showAdvanced by remember { mutableStateOf(false) }
 
     // 在生成过程中定期检查队列状态
     LaunchedEffect(isGenerating) {
@@ -206,6 +218,18 @@ fun GenerateScreen(
                         ) {
                             Text("保存到相册")
                         }
+                        FilledTonalButton(
+                            onClick = {
+                                val path = previewImagePath
+                                showImagePreview = false
+                                previewImagePath = null
+                                if (path != null) onNavigateToVideo(path)
+                            }
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("转视频")
+                        }
                     }
 
                     // 图片显示区域
@@ -227,9 +251,10 @@ fun GenerateScreen(
         }
     }
 
-    // 加载上次使用的工作流
-    LaunchedEffect(workflows) {
-        val lastUsedId = viewModel.getLastUsedWorkflowId()
+    // 加载上次使用的工作流（按提示词项目绑定）
+    LaunchedEffect(workflows, promptData) {
+        val pid = promptData?.prompt?.id ?: return@LaunchedEffect
+        val lastUsedId = viewModel.getLastUsedWorkflowId(pid)
         if (lastUsedId != null && workflows.any { it.id == lastUsedId }) {
             selectedWorkflowId = lastUsedId
         }
@@ -256,6 +281,10 @@ fun GenerateScreen(
             viewModel.loadPrompt(it)
             positivePrompt = it.prompt.positivePrompt
             negativePrompt = it.prompt.negativePrompt
+            genWidth = it.prompt.width.toString()
+            genHeight = it.prompt.height.toString()
+            genSteps = it.prompt.steps.toString()
+            genCfgScale = it.prompt.cfgScale.toString()
         }
     }
 
@@ -574,6 +603,57 @@ fun GenerateScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // 高级参数设置（折叠）
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showAdvanced = !showAdvanced }
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "高级参数",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Icon(
+                            if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (showAdvanced) "收起" else "展开",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    if (showAdvanced) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            NumberField("宽度", genWidth, "896") { genWidth = it }
+                            NumberField("高度", genHeight, "1088") { genHeight = it }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            NumberField("步数", genSteps, "30") { genSteps = it }
+                            NumberField("CFG", genCfgScale, "5.5") { genCfgScale = it }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // 使用工作流宽高选项（所有工作流都显示）
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -604,28 +684,47 @@ fun GenerateScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 生成按钮
+            // 进度卡片
+            if (isGenerating) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(progress.ifBlank { "处理中..." }, style = MaterialTheme.typography.bodyMedium)
+                            if (progressPercent > 0f) Text("${(progressPercent * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                        estimatedTime?.let { Spacer(modifier = Modifier.height(4.dp)); Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (progressPercent > 0f) LinearProgressIndicator(progress = { progressPercent }, modifier = Modifier.fillMaxWidth())
+                        else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // 生成/停止按钮
             Button(
                 onClick = {
                     if (isGenerating) {
-                        // 停止生成
                         viewModel.stopGeneration {
                             Toast.makeText(context, "已停止生成", Toast.LENGTH_SHORT).show()
                         }
                     } else {
-                        // 开始生成
                         if (promptData == null) {
                             Toast.makeText(context, "没有提示词数据", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
-                        // 图生图工作流验证
                         if (workflowType == "img2img" && selectedInputImages.isEmpty()) {
                             Toast.makeText(context, "请选择输入图片", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
                         viewModel.generateImage(
+                            promptId = promptData.prompt.id,
                             positivePrompt = promptData.prompt.positivePrompt,
                             negativePrompt = promptData.prompt.negativePrompt,
                             seed = seed.toLongOrNull() ?: -1L,
@@ -633,10 +732,10 @@ fun GenerateScreen(
                             batchSize = batchSize.toIntOrNull() ?: 1,
                             samplerName = selectedSampler,
                             scheduler = selectedScheduler,
-                            width = promptData.prompt.width,
-                            height = promptData.prompt.height,
-                            steps = promptData.prompt.steps,
-                            cfgScale = promptData.prompt.cfgScale,
+                            width = genWidth.toIntOrNull() ?: 896,
+                            height = genHeight.toIntOrNull() ?: 1088,
+                            steps = genSteps.toIntOrNull() ?: 30,
+                            cfgScale = genCfgScale.toDoubleOrNull() ?: 5.5,
                             ksamplerName = selectedKSampler,
                             kscheduler = selectedKScheduler,
                             inputImageUris = selectedInputImages,
@@ -652,26 +751,14 @@ fun GenerateScreen(
                         )
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                enabled = promptData != null
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(14.dp),
+                enabled = isGenerating || promptData != null,
+                colors = if (isGenerating) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                         else ButtonDefaults.buttonColors()
             ) {
                 if (isGenerating) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(progress.ifBlank { "生成中..." })
-                        estimatedTime?.let { time ->
-                            Text(
-                                text = time,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                    }
+                    Text("停止生成")
                 } else {
                     Icon(Icons.Default.PlayArrow, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
@@ -728,5 +815,46 @@ fun GenerateScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RowScope.NumberField(
+    label: String,
+    value: String,
+    default: String,
+    onValueChange: (String) -> Unit
+) {
+    Column(modifier = Modifier.weight(1f)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            if (value != default) {
+                TextButton(
+                    onClick = { onValueChange(default) },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                ) {
+                    Text("默认", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+        OutlinedTextField(
+            value = value,
+            onValueChange = { v ->
+                val filtered = v.filter { it.isDigit() || it == '.' }
+                onValueChange(filtered)
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium
+        )
     }
 }

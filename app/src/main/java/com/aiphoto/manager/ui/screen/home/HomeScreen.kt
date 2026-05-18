@@ -1,5 +1,10 @@
 package com.aiphoto.manager.ui.screen.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,9 +31,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Upload
@@ -52,7 +60,10 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -76,6 +87,7 @@ fun HomeScreen(
     onNavigateToHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToComfyUIHistory: () -> Unit,
+    onNavigateToVideo: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
     viewModel: HomeViewModel = viewModel()
@@ -85,6 +97,7 @@ fun HomeScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedTagIds by viewModel.selectedTagIds.collectAsState()
     val showFavoritesOnly by viewModel.showFavoritesOnly.collectAsState()
+    var tagsExpanded by remember { mutableStateOf(false) }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -102,6 +115,7 @@ fun HomeScreen(
                 onHistory = onNavigateToHistory,
                 onComfyUIHistory = onNavigateToComfyUIHistory,
                 onSettings = onNavigateToSettings,
+                onVideo = onNavigateToVideo,
                 onImport = onImport,
                 onExport = onExport,
                 onClose = { scope.launch { drawerState.close() } }
@@ -163,7 +177,8 @@ fun HomeScreen(
                 )
 
                 if (tags.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
+                    val displayTags = if (tagsExpanded) tags else tags.take(8)
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -175,7 +190,7 @@ fun HomeScreen(
                             isSelected = selectedTagIds.isEmpty(),
                             onClick = viewModel::clearTagFilter
                         )
-                        tags.forEach { tag ->
+                        displayTags.forEach { tag ->
                             TagChip(
                                 text = tag.name,
                                 color = tagColorFor(tag.name),
@@ -183,8 +198,33 @@ fun HomeScreen(
                                 onClick = { viewModel.onTagFilterToggle(tag.id) }
                             )
                         }
+                        if (tags.size > 8 && !tagsExpanded) {
+                            TagChip(
+                                text = "+${tags.size - 8}",
+                                color = "#C0C8D4",
+                                isSelected = false,
+                                onClick = { tagsExpanded = true }
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.height(6.dp))
+                    if (tags.size > 8) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            IconButton(onClick = { tagsExpanded = !tagsExpanded }) {
+                                Icon(
+                                    if (tagsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    contentDescription = if (tagsExpanded) "收起" else "展开",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
 
                 if (prompts.isEmpty()) {
@@ -231,6 +271,7 @@ private fun AppDrawer(
     onHistory: () -> Unit,
     onComfyUIHistory: () -> Unit,
     onSettings: () -> Unit,
+    onVideo: () -> Unit,
     onImport: () -> Unit,
     onExport: () -> Unit,
     onClose: () -> Unit
@@ -275,6 +316,7 @@ private fun AppDrawer(
             DrawerItem(text = "提示词模板", icon = Icons.Default.AutoAwesome) { onTemplates(); onClose() }
             DrawerItem(text = "工作流", icon = Icons.Default.Work) { onWorkflows(); onClose() }
             DrawerItem(text = "生成历史", icon = Icons.Default.Search) { onHistory(); onClose() }
+            DrawerItem(text = "图生视频", icon = Icons.Default.PlayArrow) { onVideo(); onClose() }
             DrawerItem(text = "ComfyUI 历史", icon = Icons.Default.Search) { onComfyUIHistory(); onClose() }
             HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp))
             DrawerItem(text = "设置", icon = Icons.Default.Settings) { onSettings(); onClose() }

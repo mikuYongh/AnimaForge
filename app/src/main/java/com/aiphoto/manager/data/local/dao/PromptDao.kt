@@ -68,6 +68,9 @@ interface PromptDao {
     @Delete
     suspend fun deletePrompt(prompt: PromptEntity)
 
+    @Query("UPDATE prompts SET width = :width, height = :height, steps = :steps, cfgScale = :cfgScale, updatedAt = :updatedAt WHERE id = :promptId")
+    suspend fun updatePromptDimensions(promptId: String, width: Int, height: Int, steps: Int, cfgScale: Double, updatedAt: Long)
+
     @Query("DELETE FROM prompts WHERE id = :promptId")
     suspend fun deletePromptById(promptId: String)
 

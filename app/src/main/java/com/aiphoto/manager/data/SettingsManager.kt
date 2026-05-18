@@ -17,6 +17,7 @@ class SettingsManager(private val context: Context) {
     companion object {
         private val COMFYUI_URL = stringPreferencesKey("comfyui_url")
         private val COMFYUI_WORKFLOW = stringPreferencesKey("comfyui_workflow")
+        private val COMFYUI_VIDEO_URL = stringPreferencesKey("comfyui_video_url")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
     }
 
@@ -30,6 +31,11 @@ class SettingsManager(private val context: Context) {
             preferences[COMFYUI_WORKFLOW] ?: ""
         }
 
+    val comfyUiVideoUrl: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[COMFYUI_VIDEO_URL] ?: preferences[COMFYUI_URL] ?: "http://192.168.123.178:8188"
+        }
+
     val themeMode: Flow<ThemeMode> = context.dataStore.data
         .map { preferences ->
             ThemeMode.fromName(preferences[THEME_MODE] ?: ThemeMode.BLUE_WHITE.name)
@@ -38,6 +44,12 @@ class SettingsManager(private val context: Context) {
     suspend fun saveComfyUiUrl(url: String) {
         context.dataStore.edit { preferences ->
             preferences[COMFYUI_URL] = url
+        }
+    }
+
+    suspend fun saveComfyUiVideoUrl(url: String) {
+        context.dataStore.edit { preferences ->
+            preferences[COMFYUI_VIDEO_URL] = url
         }
     }
 
