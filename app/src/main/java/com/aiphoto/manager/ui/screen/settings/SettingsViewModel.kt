@@ -25,6 +25,12 @@ class SettingsViewModel : ViewModel() {
     private val _currentTheme = MutableStateFlow(ThemeMode.BLUE_WHITE)
     val currentTheme: StateFlow<ThemeMode> = _currentTheme.asStateFlow()
 
+    private val _comfyUIUrl = MutableStateFlow("")
+    val comfyUIUrl: StateFlow<String> = _comfyUIUrl.asStateFlow()
+
+    private val _comfyUIVideoUrl = MutableStateFlow("")
+    val comfyUIVideoUrl: StateFlow<String> = _comfyUIVideoUrl.asStateFlow()
+
     private var settingsManager: SettingsManager? = null
 
     fun initSettings(context: Context) {
@@ -33,6 +39,16 @@ class SettingsViewModel : ViewModel() {
             viewModelScope.launch {
                 settingsManager!!.themeMode.collect { mode ->
                     _currentTheme.value = mode
+                }
+            }
+            viewModelScope.launch {
+                settingsManager!!.comfyUiUrl.collect { url ->
+                    _comfyUIUrl.value = url
+                }
+            }
+            viewModelScope.launch {
+                settingsManager!!.comfyUiVideoUrl.collect { url ->
+                    _comfyUIVideoUrl.value = url
                 }
             }
         }
@@ -44,6 +60,18 @@ class SettingsViewModel : ViewModel() {
         viewModelScope.launch {
             sm.saveThemeMode(mode)
         }
+    }
+
+    fun saveComfyUIUrl(url: String) {
+        _comfyUIUrl.value = url
+        val sm = settingsManager ?: return
+        viewModelScope.launch { sm.saveComfyUiUrl(url) }
+    }
+
+    fun saveComfyUIVideoUrl(url: String) {
+        _comfyUIVideoUrl.value = url
+        val sm = settingsManager ?: return
+        viewModelScope.launch { sm.saveComfyUiVideoUrl(url) }
     }
 
     fun loadBackupFiles(context: Context) {

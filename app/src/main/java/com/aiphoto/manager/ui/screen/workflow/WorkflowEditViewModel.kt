@@ -27,6 +27,7 @@ class WorkflowEditViewModel(application: Application) : AndroidViewModel(applica
         name: String,
         description: String,
         workflowJson: String,
+        type: String,
         onSaved: () -> Unit
     ) {
         viewModelScope.launch {
@@ -36,6 +37,7 @@ class WorkflowEditViewModel(application: Application) : AndroidViewModel(applica
                 name = name,
                 description = description,
                 workflowJson = workflowJson,
+                type = type,
                 isDefault = existing?.isDefault ?: false,
                 createdAt = existing?.createdAt ?: System.currentTimeMillis()
             )

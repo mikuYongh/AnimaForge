@@ -1,12 +1,15 @@
 package com.aiphoto.manager.ui.screen.workflow
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -14,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -45,6 +50,7 @@ fun WorkflowEditScreen(
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var workflowJson by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf("text2img") }
 
     LaunchedEffect(workflowId) {
         if (workflowId != null) {
@@ -57,6 +63,7 @@ fun WorkflowEditScreen(
             name = w.name
             description = w.description
             workflowJson = w.workflowJson
+            selectedType = w.type
         }
     }
 
@@ -72,7 +79,7 @@ fun WorkflowEditScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            viewModel.saveWorkflow(name, description, workflowJson, onNavigateBack)
+                            viewModel.saveWorkflow(name, description, workflowJson, selectedType, onNavigateBack)
                         },
                         enabled = name.isNotBlank() && workflowJson.isNotBlank()
                     ) {
@@ -95,9 +102,7 @@ fun WorkflowEditScreen(
                 onValueChange = { name = it },
                 label = { Text("工作流名称 *") },
                 shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary
-                ),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -109,9 +114,7 @@ fun WorkflowEditScreen(
                 onValueChange = { description = it },
                 label = { Text("描述") },
                 shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary
-                ),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 4
@@ -119,20 +122,23 @@ fun WorkflowEditScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                "工作流 JSON *",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text("工作流类型", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = selectedType == "text2img", onClick = { selectedType = "text2img" }, label = { Text("文生图") })
+                FilterChip(selected = selectedType == "img2video", onClick = { selectedType = "img2video" }, label = { Text("图生视频") })
+            }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("工作流 JSON *", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(4.dp))
-
             Text(
-                "支持变量：{{positive_prompt}}, {{negative_prompt}}, {{seed}}, {{width}}, {{height}}, {{steps}}, {{cfg}}",
+                if (selectedType == "text2img") "支持变量：{{positive_prompt}}, {{negative_prompt}}, {{seed}}, {{width}}, {{height}}, {{steps}}, {{cfg}}"
+                else "图生视频工作流，图片和提示词会自动注入",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
@@ -140,12 +146,8 @@ fun WorkflowEditScreen(
                 onValueChange = { workflowJson = it },
                 label = { Text("粘贴 ComfyUI 工作流 JSON") },
                 shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary),
+                modifier = Modifier.fillMaxWidth().height(300.dp),
                 minLines = 10,
                 maxLines = 50
             )
