@@ -27,6 +27,7 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
 
     private val workflowDao = (application as App).database.workflowDao()
     private val generatedImageDao = (application as App).database.generatedImageDao()
+    private val promptDao = (application as App).database.promptDao()
     private val settingsManager = SettingsManager(application.applicationContext)
     private val comfyUIClient = ComfyUIClient(application.applicationContext)
     private val sharedPreferences = application.getSharedPreferences("generate_settings", Context.MODE_PRIVATE)
@@ -41,6 +42,9 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
     private val _progress = MutableStateFlow("")
     val progress: StateFlow<String> = _progress
 
+    private val _progressPercent = MutableStateFlow(0f)
+    val progressPercent: StateFlow<Float> = _progressPercent
+
     private val _generatedImages = MutableStateFlow<List<String>>(emptyList())
     val generatedImages: StateFlow<List<String>> = _generatedImages
 
@@ -50,9 +54,6 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
     private val _queuePosition = MutableStateFlow<Int?>(null)
     val queuePosition: StateFlow<Int?> = _queuePosition
 
-    private var generationStartTime: Long = 0
-    private var lastProgressValue: Int = 0
-
     // 收藏的提示词
     private val _favoritePositivePrompts = MutableStateFlow<List<String>>(emptyList())
     val favoritePositivePrompts: StateFlow<List<String>> = _favoritePositivePrompts
@@ -61,9 +62,6 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
     val favoriteNegativePrompts: StateFlow<List<String>> = _favoriteNegativePrompts
 
     // 基于历史数据动态调整估算时间
-    private val generationTimeHistory = mutableListOf<Long>() // 存储最近10次生成时间
-    private var estimatedTotalTime: Int = 35 // 初始估算35秒（基于日志中的32秒实际时间）
-
     private var currentPromptId: String? = null
     private var generationService: ImageGenerationService? = null
     private var isBound = false
@@ -76,7 +74,7 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
         "multistep/dpmpp_3m" to "multistep/dpmpp_3m",
         "multistep/abnorsett_3m" to "multistep/abnorsett_3m",
         "multistep/abnorsett_4m" to "multistep/abnorsett_4m",
-        "linear/euler" to  "linear/euler"
+        "linear/euler" to  "linear/euler",
         )
 
     val schedulerOptions = listOf(
@@ -107,6 +105,7 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
         "heun" to "heun",
         "dpm_2" to "dpm_2",
         "dpm_2_ancestral" to "dpm_2_ancestral",
+        "er_sde" to "er_sde"
     )
 
     // KSampler 专用调度器选项
@@ -118,6 +117,7 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
         "simple" to "simple",
         "ddim_uniform" to "ddim_uniform",
         "beta" to "beta",
+        "beta57" to "beta57",
     )
 
     private val _selectedSampler = MutableStateFlow(getLastUsedSampler())
@@ -144,23 +144,9 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
             // 监听服务的状态
             viewModelScope.launch {
                 generationService?.isGenerating?.collect { generating ->
-                    Log.d("GenerateViewModel", "【服务状态变化】服务isGenerating: $generating, 当前ViewModel状态: ${_isGenerating.value}")
                     _isGenerating.value = generating
-                    Log.d("GenerateViewModel", "【服务状态变化】已更新ViewModel状态: ${_isGenerating.value}")
-
-                    // 当开始生成时，初始化开始时间
-                    if (generating && generationStartTime == 0L) {
-                        generationStartTime = System.currentTimeMillis()
-                        lastProgressValue = 0
-                        Log.d("GenerateViewModel", "【服务状态变化】初始化开始时间: ${java.util.Date(generationStartTime)}")
-                    }
-
-                    // 当生成结束时，重置开始时间
                     if (!generating) {
-                        generationStartTime = 0
-                        lastProgressValue = 0
                         _estimatedTime.value = null
-                        Log.d("GenerateViewModel", "【服务状态变化】重置开始时间和估算时间")
                     }
                 }
             }
@@ -168,45 +154,30 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
             // 立即同步当前状态
             val currentServiceState = generationService?.isGenerating?.value ?: false
             _isGenerating.value = currentServiceState
-            Log.d("GenerateViewModel", "【初始状态同步】服务状态: $currentServiceState, ViewModel状态: ${_isGenerating.value}")
+            _generatedImages.value = generationService?.generatedImages?.value ?: emptyList()
+            Log.d("GenerateViewModel", "【初始状态同步】服务状态: $currentServiceState, 图片数: ${_generatedImages.value.size}")
 
             viewModelScope.launch {
                 generationService?.progress?.collect { progressText ->
                     _progress.value = progressText
+                }
+            }
 
-                    // 尝试从进度文本中提取百分比（例如 "生成中... 45%"）
-                    val progressMatch = Regex("(\\d+)%").find(progressText)
-                    if (progressMatch != null) {
-                        lastProgressValue = progressMatch.groupValues[1].toInt()
-                    }
+            viewModelScope.launch {
+                generationService?.progressPercent?.collect { pct ->
+                    _progressPercent.value = pct
+                }
+            }
+
+            viewModelScope.launch {
+                generationService?.estimatedTime?.collect { eta ->
+                    _estimatedTime.value = eta.ifEmpty { null }
                 }
             }
 
             viewModelScope.launch {
                 generationService?.generatedImages?.collect { images ->
                     _generatedImages.value = images
-
-                    // 当有新图片生成完成时，记录生成时间并更新估算
-                    if (images.isNotEmpty() && generationStartTime > 0) {
-                        val generationTime = (System.currentTimeMillis() - generationStartTime) / 1000
-                        Log.d("GenerateViewModel", "图片生成完成，用时: ${generationTime}秒")
-
-                        // 记录到历史
-                        generationTimeHistory.add(generationTime)
-                        if (generationTimeHistory.size > 10) {
-                            generationTimeHistory.removeAt(0)
-                        }
-
-                        // 更新估算时间为历史平均值
-                        if (generationTimeHistory.isNotEmpty()) {
-                            estimatedTotalTime = (generationTimeHistory.sum() / generationTimeHistory.size).toInt()
-                            Log.d("GenerateViewModel", "更新估算时间: ${estimatedTotalTime}秒 (基于${generationTimeHistory.size}次历史数据)")
-                        }
-
-                        // 重置开始时间，为下一张图片准备
-                        generationStartTime = System.currentTimeMillis()
-                        lastProgressValue = 0
-                    }
                 }
             }
         }
@@ -223,14 +194,14 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
         application.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
-    // 获取上次使用的工作流ID
-    fun getLastUsedWorkflowId(): String? {
-        return sharedPreferences.getString("last_workflow_id", null)
+    // 获取上次使用的工作流ID (按提示词项目绑定)
+    fun getLastUsedWorkflowId(promptId: String): String? {
+        return sharedPreferences.getString("workflow_$promptId", null)
     }
 
-    // 保存工作流ID
-    private fun saveLastUsedWorkflowId(workflowId: String?) {
-        sharedPreferences.edit().putString("last_workflow_id", workflowId ?: "").apply()
+    // 保存工作流ID (按提示词项目绑定)
+    private fun saveLastUsedWorkflowId(promptId: String, workflowId: String?) {
+        sharedPreferences.edit().putString("workflow_$promptId", workflowId ?: "").apply()
     }
 
     // 获取上次使用的 sampler
@@ -297,6 +268,15 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
         saveLastUsedKScheduler(scheduler)
     }
 
+    fun savePromptDimensions(promptId: String, width: Int, height: Int, steps: Int, cfgScale: Double) {
+        viewModelScope.launch {
+            promptDao.updatePromptDimensions(
+                promptId, width, height, steps, cfgScale,
+                System.currentTimeMillis()
+            )
+        }
+    }
+
     // 设置工作流类型
     fun setWorkflowType(type: String) {
         _workflowType.value = type
@@ -326,118 +306,26 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
                 val url = settingsManager.comfyUiUrl.first()
                 comfyUIClient.setServerUrl(url)
                 val queueStatus = comfyUIClient.getQueueStatus()
-
-                Log.d("GenerateViewModel", "========== 队列状态检查 ==========")
-                Log.d("GenerateViewModel", "队列JSON: $queueStatus")
-
-                // 解析队列状态
                 val queueRunning = queueStatus.getAsJsonArray("queue_running")?.size() ?: 0
                 val queuePending = queueStatus.getAsJsonArray("queue_pending")?.size() ?: 0
-
-                Log.d("GenerateViewModel", "运行中任务数: $queueRunning, 等待中任务数: $queuePending")
-
                 _queuePosition.value = queueRunning + queuePending
-
-                // 根据进度计算剩余时间
-                if (generationStartTime > 0 && lastProgressValue > 0) {
-                    // 有进度信息，基于进度百分比计算
-                    val elapsedTime = (System.currentTimeMillis() - generationStartTime) / 1000
-                    val estimatedTotalTime = (elapsedTime * 100) / lastProgressValue
-                    val remainingTime = estimatedTotalTime - elapsedTime
-
-                    val minutes = remainingTime / 60
-                    val seconds = remainingTime % 60
-
-                    _estimatedTime.value = when {
-                        remainingTime <= 0 -> "即将完成"
-                        minutes > 0 -> "预计剩余 ${minutes}分${seconds}秒"
-                        else -> "预计剩余 ${seconds}秒"
-                    }
-
-                    Log.d("GenerateViewModel", "【有进度】进度: $lastProgressValue%, 已用: ${elapsedTime}秒, 预计总时间: ${estimatedTotalTime}秒, 剩余: ${remainingTime}秒")
-                    Log.d("GenerateViewModel", "【有进度】显示文本: ${_estimatedTime.value}")
-                } else if (generationStartTime > 0) {
-                    // 没有进度信息，但有开始时间，基于已用时间估算
-                    val currentTime = System.currentTimeMillis()
-                    val elapsedTime = (currentTime - generationStartTime) / 1000
-
-                    Log.d("GenerateViewModel", "【无进度】开始时间: $generationStartTime (${java.util.Date(generationStartTime)})")
-                    Log.d("GenerateViewModel", "【无进度】当前时间: $currentTime (${java.util.Date(currentTime)})")
-                    Log.d("GenerateViewModel", "【无进度】已用时间: ${elapsedTime}秒")
-                    Log.d("GenerateViewModel", "【无进度】lastProgressValue: $lastProgressValue")
-
-                    // 基于已用时间动态调整估算（估算值随时间递减）
-                    val estimatedRemaining = maxOf(5, estimatedTotalTime - elapsedTime.toInt())
-
-                    val minutes = estimatedRemaining / 60
-                    val seconds = estimatedRemaining % 60
-
-                    _estimatedTime.value = when {
-                        estimatedRemaining <= 5 -> "即将完成"
-                        minutes > 0 -> "预计剩余 ${minutes}分${seconds}秒"
-                        else -> "预计剩余 ${seconds}秒"
-                    }
-
-                    Log.d("GenerateViewModel", "【无进度】预计总时间: ${estimatedTotalTime}秒, 预计剩余: ${estimatedRemaining}秒")
-                    Log.d("GenerateViewModel", "【无进度】显示文本: ${_estimatedTime.value}")
-                } else if (queueRunning > 0 || queuePending > 0) {
-                    // 还没开始生成，显示队列信息
-                    val waitTime = if (queueRunning > 0) queueRunning * 30 else 0
-                    val queueTime = queuePending * 30
-                    val estimatedSeconds = waitTime + queueTime
-
-                    val minutes = estimatedSeconds / 60
-                    val seconds = estimatedSeconds % 60
-                    _estimatedTime.value = when {
-                        minutes > 0 -> "队列等待 ${minutes}分${seconds}秒"
-                        seconds > 0 -> "队列等待 ${seconds}秒"
-                        else -> "即将开始"
-                    }
-
-                    Log.d("GenerateViewModel", "【队列等待】显示文本: ${_estimatedTime.value}")
-                } else {
-                    _estimatedTime.value = "正在生成中..."
-                    Log.d("GenerateViewModel", "【其他】显示文本: ${_estimatedTime.value}")
-                }
-
-                Log.d("GenerateViewModel", "===================================")
             } catch (e: Exception) {
-                Log.e("GenerateViewModel", "获取队列状态失败", e)
-                _estimatedTime.value = "生成中..."
+                Log.e("GenerateViewModel", "检查队列状态失败", e)
             }
         }
     }
 
     fun stopGeneration(onComplete: () -> Unit) {
-        viewModelScope.launch {
-            try {
-                // 先中断 ComfyUI 服务器端的生成
-                val url = settingsManager.comfyUiUrl.first()
-                comfyUIClient.setServerUrl(url)
-                val success = comfyUIClient.interrupt()
-
-                // 发送停止意图给服务，取消批处理循环
-                val intent = Intent(getApplication(), ImageGenerationService::class.java).apply {
-                    action = ImageGenerationService.ACTION_STOP_GENERATION
-                }
-                getApplication<Application>().startService(intent)
-
-                if (success) {
-                    _progress.value = "已停止生成"
-                    generationStartTime = 0
-                    lastProgressValue = 0
-                    _estimatedTime.value = null
-                    Log.d("GenerateViewModel", "【停止生成】已重置所有状态")
-                }
-                onComplete()
-            } catch (e: Exception) {
-                Log.e("GenerateViewModel", "停止生成失败", e)
-                onComplete()
-            }
-        }
+        Log.d("ImageGen", "=== GenerateViewModel.stopGeneration ===")
+        generationService?.stopGeneration()
+        viewModelScope.launch { comfyUIClient.interrupt() }
+        _progress.value = "已停止生成"
+        _estimatedTime.value = null
+        onComplete()
     }
 
     fun generateImage(
+        promptId: String,
         positivePrompt: String,
         negativePrompt: String,
         seed: Long,
@@ -460,16 +348,20 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
     ) {
         val context = getApplication<Application>()
 
-        // 初始化生成时间追踪
-        generationStartTime = System.currentTimeMillis()
-        lastProgressValue = 0
-
         // 保存使用的工作流和采样器设置
-        saveLastUsedWorkflowId(workflowId)
+        saveLastUsedWorkflowId(promptId, workflowId)
         saveLastUsedSampler(samplerName)
         saveLastUsedScheduler(scheduler)
         saveLastUsedKSampler(ksamplerName)
         saveLastUsedKScheduler(kscheduler)
+
+        // 保存高级参数到提示词
+        kotlinx.coroutines.runBlocking {
+            promptDao.updatePromptDimensions(
+                promptId, width, height, steps, cfgScale,
+                System.currentTimeMillis()
+            )
+        }
 
         // 启动前台服务进行生成
         val intent = Intent(context, ImageGenerationService::class.java).apply {

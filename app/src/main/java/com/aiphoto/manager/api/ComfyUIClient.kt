@@ -9,12 +9,19 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -27,7 +34,57 @@ class ComfyUIClient(private val context: Context) {
 
     private var baseUrl: String = "http://192.168.123.178:8188/"
     private var api: ComfyUIApi? = null
+    private var ws: WebSocket? = null
     private val gson = Gson()
+
+    // WebSocket 事件
+    private val _wsEvent = MutableSharedFlow<Pair<String, JsonObject>>(replay = 16, extraBufferCapacity = 64)
+    val wsEvents: SharedFlow<Pair<String, JsonObject>> = _wsEvent
+
+    fun connectWebSocket(clientId: String) {
+        val wsUrl = baseUrl
+            .replace("https://", "wss://")
+            .replace("http://", "ws://")
+            .trimEnd('/') + "/ws?clientId=$clientId"
+        Log.d("ComfyUI_WS", "WS连接地址: $wsUrl")
+
+        val client = OkHttpClient.Builder().build()
+        val request = Request.Builder().url(wsUrl).build()
+        ws = client.newWebSocket(request, object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                Log.d("ComfyUI_WS", "WS已连接: ${response.code}")
+            }
+
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                Log.d("ComfyUI_WS", "WS收到: $text")
+                try {
+                    val obj = JsonParser.parseString(text).asJsonObject
+                    val type = obj.get("type")?.asString ?: return
+                    Log.d("ComfyUI_WS", "WS类型: $type")
+                    _wsEvent.tryEmit(type to obj)
+                } catch (e: Exception) {
+                    Log.e("ComfyUI_WS", "WS解析失败: ${e.message}")
+                }
+            }
+
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                Log.d("ComfyUI_WS", "WS关闭中: code=$code reason=$reason")
+            }
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                Log.d("ComfyUI_WS", "WS已关闭: code=$code reason=$reason")
+            }
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                Log.e("ComfyUI_WS", "WS错误: ${t.message}", t)
+            }
+        })
+    }
+
+    fun disconnectWebSocket() {
+        ws?.close(1000, "client disconnect")
+        ws = null
+    }
 
     fun setServerUrl(url: String) {
         baseUrl = if (url.endsWith("/")) url else "$url/"
@@ -71,7 +128,8 @@ class ComfyUIClient(private val context: Context) {
         denoise: Double = 1.0,
         inputImageFilename: String? = null,
         useWorkflowDimensions: Boolean = false,
-        artistPrompt: String = ""
+        artistPrompt: String = "",
+        clientId: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             val actualSeed = if (seed == -1L) System.currentTimeMillis() else seed
@@ -95,8 +153,8 @@ class ComfyUIClient(private val context: Context) {
             Log.d("ComfyUIClient", "发送的工作流: $workflowJson")
 
             // 构建请求 JSON
-            val clientId = UUID.randomUUID().toString()
-            val requestJson = """{"prompt":$workflowJson,"client_id":"$clientId"}"""
+            val cid = clientId ?: UUID.randomUUID().toString()
+            val requestJson = """{"prompt":$workflowJson,"client_id":"$cid"}"""
 
             val requestBody = requestJson.toRequestBody("application/json".toMediaType())
             val response = api!!.queuePrompt(requestBody)
@@ -191,10 +249,18 @@ class ComfyUIClient(private val context: Context) {
                             if (inputImageName != null && inputs.has("denoise")) {
                                 inputs.addProperty("denoise", denoise)
                             }
+                            if (!useWorkflowDimensions) {
+                                if (inputs.has("width")) {
+                                    inputs.addProperty("width", width)
+                                }
+                                if (inputs.has("height")) {
+                                    inputs.addProperty("height", height)
+                                }
+                            }
                         }
 
-                        // KSampler / KSamplerAdvanced - 使用标准采样器配置
-                        "KSampler", "KSamplerAdvanced" -> {
+                        // KSampler - 标准采样器配置
+                        "KSampler" -> {
                             if (inputs.has("seed")) {
                                 inputs.addProperty("seed", seed)
                             }
@@ -215,6 +281,34 @@ class ComfyUIClient(private val context: Context) {
                             }
                         }
 
+                        // KSamplerAdvanced - 高级采样器配置（noise_seed 替代 seed，无 denoise）
+                        "KSamplerAdvanced" -> {
+                            if (inputs.has("noise_seed")) {
+                                inputs.addProperty("noise_seed", seed)
+                            }
+                            if (inputs.has("steps")) {
+                                inputs.addProperty("steps", steps)
+                            }
+                            if (inputs.has("cfg")) {
+                                inputs.addProperty("cfg", cfgScale)
+                            }
+                            if (inputs.has("sampler_name")) {
+                                inputs.addProperty("sampler_name", ksamplerName)
+                            }
+                            if (inputs.has("scheduler")) {
+                                inputs.addProperty("scheduler", kscheduler)
+                            }
+                            if (inputs.has("start_at_step")) {
+                                inputs.addProperty("start_at_step", 0)
+                            }
+                            if (inputs.has("end_at_step")) {
+                                inputs.addProperty("end_at_step", steps)
+                            }
+                            if (inputImageName != null && inputs.has("return_with_leftover_noise")) {
+                                inputs.addProperty("return_with_leftover_noise", "disable")
+                            }
+                        }
+
                         // EmptyLatentImage - 替换尺寸
                         "EmptyLatentImage" -> {
                             if (!useWorkflowDimensions) {
@@ -223,6 +317,18 @@ class ComfyUIClient(private val context: Context) {
                                 }
                                 if (inputs.has("height")) {
                                     inputs.addProperty("height", height)
+                                }
+                            }
+                        }
+
+                        // SDXLEmptyLatentSizePicker+ - 替换尺寸
+                        "SDXLEmptyLatentSizePicker+" -> {
+                            if (!useWorkflowDimensions) {
+                                if (inputs.has("width_override")) {
+                                    inputs.addProperty("width_override", width)
+                                }
+                                if (inputs.has("height_override")) {
+                                    inputs.addProperty("height_override", height)
                                 }
                             }
                         }
@@ -506,6 +612,70 @@ class ComfyUIClient(private val context: Context) {
         } catch (e: Exception) {
             Log.e("ComfyUIClient", "中断生成失败", e)
             false
+        }
+    }
+
+    suspend fun submitRawWorkflow(workflowJson: String, clientId: String? = null): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val cid = clientId ?: UUID.randomUUID().toString()
+            val requestJson = """{"prompt":$workflowJson,"client_id":"$cid"}"""
+            Log.d("ComfyUIClient", "提交 Raw 工作流: $requestJson")
+            val requestBody = requestJson.toRequestBody("application/json".toMediaType())
+            val response = api!!.queuePrompt(requestBody)
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!.string()
+                val promptId = JsonParser.parseString(body).asJsonObject.get("prompt_id")?.asString
+                if (promptId != null) Result.success(promptId)
+                else Result.failure(Exception("无法获取 prompt_id"))
+            } else {
+                Result.failure(Exception("提交失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getHistoryById(promptId: String): Result<JsonObject> = withContext(Dispatchers.IO) {
+        try {
+            val response = api!!.getHistoryRaw(promptId)
+            if (response.isSuccessful && response.body() != null) {
+                val raw = response.body()!!.string()
+                val root = com.google.gson.JsonParser.parseString(raw).asJsonObject
+                val entry = root[promptId]?.asJsonObject
+                if (entry != null) {
+                    Result.success(entry)
+                } else {
+                    Result.failure(Exception("未找到: $promptId"))
+                }
+            } else {
+                Result.failure(Exception("查询失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun downloadFile(filename: String, subfolder: String, type: String, outputType: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = api!!.getImage(filename = filename, subfolder = subfolder, type = type)
+            if (response.isSuccessful && response.body() != null) {
+                val dir = when (outputType) {
+                    "video" -> File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MOVIES), "AnimaForge")
+                    else -> File(context.filesDir, outputType)
+                }
+                if (!dir.exists()) dir.mkdirs()
+                val file = File(dir, filename)
+                response.body()!!.byteStream().use { input ->
+                    file.outputStream().use { output -> input.copyTo(output) }
+                }
+                android.media.MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), null, null)
+                Log.d("ComfyUIClient", "下载完成: ${file.absolutePath}")
+                Result.success(file.absolutePath)
+            } else {
+                Result.failure(Exception("下载失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

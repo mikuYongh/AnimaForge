@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -40,10 +41,17 @@ class ImageGenerationService : Service() {
     private val _progress = MutableStateFlow("")
     val progress: StateFlow<String> = _progress
 
+    private val _progressPercent = MutableStateFlow(0f)
+    val progressPercent: StateFlow<Float> = _progressPercent
+
+    private val _estimatedTime = MutableStateFlow("")
+    val estimatedTime: StateFlow<String> = _estimatedTime
+
     private val _generatedImages = MutableStateFlow<List<String>>(emptyList())
     val generatedImages: StateFlow<List<String>> = _generatedImages
 
     private var currentGenerationJob: Job? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     companion object {
         const val CHANNEL_ID = "image_generation_channel"
@@ -88,6 +96,7 @@ class ImageGenerationService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d("ImageGen", "=== onStartCommand: action=${intent?.action} ===")
         when (intent?.action) {
             ACTION_START_GENERATION -> {
                 val positivePrompt = intent.getStringExtra(EXTRA_POSITIVE_PROMPT) ?: ""
@@ -142,7 +151,7 @@ class ImageGenerationService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "图片生成服务",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "显示图片生成进度"
             }
@@ -187,6 +196,13 @@ class ImageGenerationService : Service() {
         kscheduler: String = "normal",
         artistPrompt: String = ""
     ) {
+        // 获取唤醒锁，防止锁屏后 CPU 休眠
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "AnimaForge:ImageGeneration"
+        ).apply { acquire() }
+
         // 启动前台服务
         val notification = createNotification("图片生成中", "准备中...")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -202,6 +218,11 @@ class ImageGenerationService : Service() {
 
         _isGenerating.value = true
         _generatedImages.value = emptyList()
+        _progressPercent.value = 0f
+
+        // 连接 WebSocket
+        val clientId = "img_${System.currentTimeMillis()}"
+        comfyUIClient.connectWebSocket(clientId)
 
         currentGenerationJob = scope.launch {
             try {
@@ -252,15 +273,14 @@ class ImageGenerationService : Service() {
                 var failCount = 0
 
                 for (i in 1..batchSize) {
-                    if (!isActive) break
+                    Log.d("ImageGen", "循环迭代 i=$i isActive=$isActive")
+                    if (!isActive) { Log.d("ImageGen", "isActive=false break"); break }
 
-                    val progressText = "正在生成第 $i/$batchSize 张..."
-                    _progress.value = progressText
-
-                    // 更新通知
+                    _progress.value = "提交 $i/$batchSize..."
+                    _progressPercent.value = 0f
                     notificationManager.notify(
                         NOTIFICATION_ID,
-                        createNotification("图片生成中", progressText)
+                        createNotification("图片生成中", _progress.value)
                     )
 
                     try {
@@ -286,7 +306,8 @@ class ImageGenerationService : Service() {
                             useWorkflowDimensions = useWorkflowDimensions,
                             ksamplerName = ksamplerName,
                             kscheduler = kscheduler,
-                            artistPrompt = artistPrompt
+                            artistPrompt = artistPrompt,
+                            clientId = clientId
                         )
 
                         if (promptResult.isFailure) {
@@ -296,32 +317,94 @@ class ImageGenerationService : Service() {
 
                         val promptIdResult = promptResult.getOrThrow()
 
-                        val imageResult = comfyUIClient.waitForImage(promptIdResult)
+                        // WebSocket 驱动: 进度 + 完成检测
+                        val startTime = System.currentTimeMillis()
+                        var lastProgressTime = startTime; var lastProgressValue = 0; var stepAvgMs = 0L; var found = false
 
-                        if (imageResult.isFailure) {
-                            failCount++
-                            continue
-                        }
-
-                        val images = imageResult.getOrThrow()
-                        if (images.isNotEmpty()) {
-                            images.forEach { imageFile ->
-                                val generatedImage = GeneratedImageEntity(
-                                    id = UUID.randomUUID().toString(),
-                                    promptId = promptId,
-                                    imagePath = imageFile.absolutePath,
-                                    positivePrompt = positivePrompt,
-                                    negativePrompt = negativePrompt,
-                                    seed = currentSeed,
-                                    workflowId = workflowId
-                                )
-                                generatedImageDao.insertGeneratedImage(generatedImage)
-
-                                _generatedImages.value = _generatedImages.value + imageFile.absolutePath
+                        var wsJob: kotlinx.coroutines.Job? = null
+                        wsJob = scope.launch {
+                            comfyUIClient.wsEvents.collect { (type, data) ->
+                                val p = data.getAsJsonObject("data")?.get("prompt_id")?.asString ?: return@collect
+                                if (p != promptIdResult) return@collect
+                                when (type) {
+                                    "progress" -> {
+                                        val v = data.getAsJsonObject("data")?.get("value")?.asInt ?: 0
+                                        val m = data.getAsJsonObject("data")?.get("max")?.asInt ?: 1
+                                        val now = System.currentTimeMillis()
+                                        val deltaV = v - lastProgressValue; val deltaT = now - lastProgressTime
+                                        if (deltaV > 0 && deltaT > 0 && lastProgressValue > 0) {
+                                            val curMs = deltaT / deltaV
+                                            stepAvgMs = if (stepAvgMs == 0L) curMs else (stepAvgMs * 3 + curMs) / 4
+                                        }
+                                        val newPct = v.toFloat() / m
+                                        if (newPct > _progressPercent.value) _progressPercent.value = newPct
+                                        _progress.value = "生成 $i/$batchSize: $v/$m"
+                                        val remain = if (stepAvgMs > 0) ((m - v) * stepAvgMs) / 1000 else 0
+                                        if (remain > 0) _estimatedTime.value = "预计剩余 ${remain}s"
+                                        notificationManager.notify(NOTIFICATION_ID, createNotification("图片生成中", _progress.value))
+                                        Log.d("ImageGen", "Progress: $v/$m stepAvg=${stepAvgMs}ms remain=${remain}s")
+                                        lastProgressTime = now; lastProgressValue = v
+                                    }
+                                    "execution_success" -> {
+                                        Log.d("ImageGen", "WS execution_success!"); found = true; wsJob?.cancel()
+                                    }
+                                    "execution_error" -> {
+                                        Log.e("ImageGen", "WS execution_error!"); found = true; wsJob?.cancel()
+                                    }
+                                }
                             }
-                            successCount += images.size
                         }
+
+                        // HTTP 轮询 fallback: 等 WS 完成或超时后切换
+                        while (isActive && !found) {
+                            if (!isActive) { Log.d("ImageGen", "while内 isActive=false break"); break }
+                            kotlinx.coroutines.delay(1000)
+                            val elapsed = (System.currentTimeMillis() - startTime) / 1000
+                            // WS 没数据时才显示运行时间，不覆盖 WS 的真实 ETA
+                            if (_progressPercent.value <= 0f) _estimatedTime.value = "${elapsed}s"
+                            if (elapsed % 5 == 0L) Log.d("ImageGen", "等待中: elapsed=${elapsed}s isActive=$isActive")
+                            if (elapsed > 10) {
+                                val hist = withContext(Dispatchers.IO) { comfyUIClient.getHistoryById(promptIdResult) }
+                                if (hist.isSuccess && hist.getOrNull() != null) {
+                                    val obj = hist.getOrNull()!!
+                                    val outs = obj.getAsJsonObject("outputs")
+                                    if (outs != null) {
+                                        for ((_, nv) in outs.entrySet()) {
+                                            val arr = nv.asJsonObject.getAsJsonArray("images") ?: continue
+                                            if (arr.size() > 0) {
+                                                val info = arr[0].asJsonObject
+                                                _progress.value = "下载图片 $i/$batchSize..."
+                                                val dl = withContext(Dispatchers.IO) { comfyUIClient.downloadFile(info.get("filename").asString, info.get("subfolder")?.asString ?: "", info.get("type")?.asString ?: "output", "images") }
+                                                if (dl.isSuccess) {
+                                                    val file = File(dl.getOrThrow())
+                                                    val generatedImage = GeneratedImageEntity(
+                                                        id = UUID.randomUUID().toString(),
+                                                        promptId = promptId,
+                                                        imagePath = file.absolutePath,
+                                                        positivePrompt = positivePrompt,
+                                                        negativePrompt = negativePrompt,
+                                                        seed = currentSeed,
+                                                        workflowId = workflowId
+                                                    )
+                                                    generatedImageDao.insertGeneratedImage(generatedImage)
+                                                    _generatedImages.value = _generatedImages.value + file.absolutePath
+                                                    successCount++
+                                                    found = true
+                                                }
+                                                break
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        wsJob?.cancel()
+
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d("ImageGenerationService", "生成被取消")
                     } catch (e: Exception) {
+                        Log.d("ImageGen", "循环内异常: isActive=$isActive msg=${e.message}")
+                        if (!isActive) break  // 被取消
                         Log.e("ImageGenerationService", "第 $i 次生成失败", e)
                         failCount++
                     }
@@ -339,18 +422,22 @@ class ImageGenerationService : Service() {
                 showCompletionNotification(successCount, resultText)
 
                 _progress.value = ""
+                _progressPercent.value = 0f
+                _estimatedTime.value = ""
                 _isGenerating.value = false
-
-                // 停止前台服务
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                releaseWakeLock()
+                comfyUIClient.disconnectWebSocket()
+                stopForeground(STOP_FOREGROUND_DETACH)
 
             } catch (e: Exception) {
                 Log.e("ImageGenerationService", "生成图片失败", e)
                 _progress.value = ""
+                _progressPercent.value = 0f
+                _estimatedTime.value = ""
                 _isGenerating.value = false
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                releaseWakeLock()
+                comfyUIClient.disconnectWebSocket()
+                stopForeground(STOP_FOREGROUND_DETACH)
             }
         }
     }
@@ -374,17 +461,30 @@ class ImageGenerationService : Service() {
         notificationManager.notify(NOTIFICATION_ID + 1, notification)
     }
 
-    private fun stopGeneration() {
+    fun stopGeneration() {
+        Log.d("ImageGen", "=== stopGeneration 被调用 ===")
+        Log.d("ImageGen", "job 状态: isActive=${currentGenerationJob?.isActive}, isCancelled=${currentGenerationJob?.isCancelled}")
         currentGenerationJob?.cancel()
+        Log.d("ImageGen", "cancel 后 job 状态: isActive=${currentGenerationJob?.isActive}, isCancelled=${currentGenerationJob?.isCancelled}")
         currentGenerationJob = null
         _isGenerating.value = false
         _progress.value = ""
+        scope.launch { comfyUIClient.interrupt(); comfyUIClient.disconnectWebSocket() }
+        releaseWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        releaseWakeLock()
         scope.cancel()
+    }
+
+    private fun releaseWakeLock() {
+        wakeLock?.let {
+            if (it.isHeld) it.release()
+        }
+        wakeLock = null
     }
 }
