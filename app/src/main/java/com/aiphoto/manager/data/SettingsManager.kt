@@ -38,7 +38,7 @@ class SettingsManager(private val context: Context) {
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data
         .map { preferences ->
-            ThemeMode.fromName(preferences[THEME_MODE] ?: ThemeMode.BLUE_WHITE.name)
+            ThemeMode.fromName(preferences[THEME_MODE] ?: ThemeMode.MIKU_SAKURA.name)
         }
 
     suspend fun saveComfyUiUrl(url: String) {

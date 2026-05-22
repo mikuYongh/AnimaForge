@@ -3,7 +3,7 @@ package com.aiphoto.manager.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ============================================
-// Tag 预设色 (所有主题共用)
+// Tag 预设色 (所有主题共用，保持半透明高对比二次元风格)
 // ============================================
 val TagPink = Color(0xFFFFC0D0)
 val TagPurple = Color(0xFFD8B4FE)
@@ -27,52 +27,49 @@ fun tagColorFor(tagName: String): String {
 }
 
 // ============================================
-// 蓝白二次元主题色 (默认)
+// 1. 初音未来樱花粉 (Sakura Miku) [默认主题]
 // ============================================
-val BlueWhitePrimary = Color(0xFF4A90D9)
-val BlueWhitePrimaryLight = Color(0xFF7BB5F0)
-val BlueWhitePrimaryDark = Color(0xFF2A70B0)
-val BlueWhitePrimaryContainer = Color(0xFFD6EBFF)
-
-val BlueWhiteSecondary = Color(0xFF6EC6F8)
-val BlueWhiteSecondaryLight = Color(0xFFA0DDFA)
-val BlueWhiteSecondaryDark = Color(0xFF3AA8E0)
-
-val BlueWhiteTertiary = Color(0xFFFF8FAB)
-val BlueWhiteTertiaryLight = Color(0xFFFFB8D0)
-
-val BlueWhiteBackground = Color(0xFFF0F5FF)
-val BlueWhiteSurface = Color(0xFFFFFFFF)
-val BlueWhiteSurfaceVariant = Color(0xFFE8F0FE)
-
-val BlueWhiteTextPrimary = Color(0xFF1A2A3A)
-val BlueWhiteTextSecondary = Color(0xFF607088)
-val BlueWhiteTextHint = Color(0xFFA0B0C8)
+val MikuSakuraPrimary = Color(0xFFFF74A3)         // 柔嫩樱花粉
+val MikuSakuraSecondary = Color(0xFFBA84FC)       // 梦幻紫罗兰
+val MikuSakuraTertiary = Color(0xFFFFB8D0)        // 软萌樱粉
+val MikuSakuraBgStart = Color(0xFFFFEFF4)         // 渐变粉白起
+val MikuSakuraBgEnd = Color(0xFFF3E9FF)           // 渐变紫白终
 
 // ============================================
-// 樱花粉 (保留兼容)
+// 2. 初音未来经典蓝 (Miku Teal/Blue)
 // ============================================
-val SakuraPink = Color(0xFFFF6B9D)
-val SakuraPinkLight = Color(0xFFFFB3CC)
-val SakuraPinkDark = Color(0xFFE6457A)
-val SakuraPinkVibrant = Color(0xFFFF8FAB)
-val SakuraPinkSoft = Color(0xFFFFB8D0)
+val MikuBluePrimary = Color(0xFF39C5BB)           // 标志性初音蓝绿 (Teal)
+val MikuBlueSecondary = Color(0xFF22B9EE)         // 歌姬霓虹亮蓝
+val MikuBlueTertiary = Color(0xFF67E8F9)          // 亮丽青蓝
+val MikuBlueBgStart = Color(0xFFE8FAF7)           // 渐变青蓝白起
+val MikuBlueBgEnd = Color(0xFFE3F5FF)             // 渐变浅蓝白终
 
-val LavenderPurple = Color(0xFFC084FC)
-val LavenderPurpleLight = Color(0xFFDDD6FE)
-val LavenderPurpleDark = Color(0xFF9F5FE0)
-val LavenderPurpleVibrant = Color(0xFFD4B5FE)
-val LavenderPurpleDeep = Color(0xFF9F7AEA)
+// ============================================
+// 3. 初音未来葱绿 (Miku Leek Green)
+// ============================================
+val MikuGreenPrimary = Color(0xFF7DC876)          // 活力大葱绿
+val MikuGreenSecondary = Color(0xFFFFD54F)        // 柠檬黄
+val MikuGreenTertiary = Color(0xFFA5F3FC)         // 莹润青蓝
+val MikuGreenBgStart = Color(0xFFF1FAF0)          // 葱绿浅白起
+val MikuGreenBgEnd = Color(0xFFFFFDE7)            // 暖洋柠檬白终
 
-val MintBlue = Color(0xFF67E8F9)
-val MintBlueLight = Color(0xFFA5F3FC)
-val MintBlueDark = Color(0xFF22D3EE)
-val SkyBlue = Color(0xFF7DD3FC)
-val CyanLight = Color(0xFFA5F3FC)
+// ============================================
+// 4. 暗夜星辰 (Abyss Midnight) [暗色调]
+// ============================================
+val MikuDarkPrimary = Color(0xFFBB86FC)           // 罗兰紫色
+val MikuDarkSecondary = Color(0xFF39C5BB)         // 葱蓝绿点缀
+val MikuDarkTertiary = Color(0xFFFF7597)          // 霓虹荧光粉
+val MikuDarkBgStart = Color(0xFF0A0515)           // 深邃暗紫底
+val MikuDarkBgEnd = Color(0xFF1B0D2E)             // 暗夜星空终
 
-val CoralPeach = Color(0xFFFFB4A2)
-val LemonCream = Color(0xFFFDE68A)
-val MintGreen = Color(0xFF86EFAC)
+// ============================================
+// 5. 赛博极光 (Cyber Neon) [高对比暗色调]
+// ============================================
+val CyberNeonPrimary = Color(0xFFFF8500)          // 赛博霓虹橙
+val CyberNeonSecondary = Color(0xFF00E5FF)        // 荧光极光青
+val CyberNeonTertiary = Color(0xFFBA68C8)         // 霓虹紫
+val CyberNeonBgStart = Color(0xFF070B18)          // 赛博黑底
+val CyberNeonBgEnd = Color(0xFF1B112D)            // 极光星雨底
 
 // ============================================
 // 通用状态色
@@ -80,37 +77,3 @@ val MintGreen = Color(0xFF86EFAC)
 val ErrorSoft = Color(0xFFFF8A80)
 val SuccessSoft = Color(0xFF81C784)
 val WarningSoft = Color(0xFFFFD54F)
-
-// ============================================
-// 暗色主题背景色 (保留兼容)
-// ============================================
-val SakuraPinkDarkTheme = Color(0xFFFF8FAB)
-val LavenderPurpleDarkTheme = Color(0xFFD4B5FE)
-val MintBlueDarkTheme = Color(0xFF67E8F9)
-
-val SurfaceDark = Color(0xFF1A0F24)
-val BackgroundDark = Color(0xFF0D0815)
-val CardBackgroundDark = Color(0xFF2A1F35)
-val CardBackgroundAltDark = Color(0xFF322840)
-
-val TextPrimaryDark = Color(0xFFF5F0FF)
-val TextSecondaryDark = Color(0xFFB8A0C8)
-val TextHintDark = Color(0xFF7A6888)
-
-// ============================================
-// 亮色主题表面色 (保留兼容)
-// ============================================
-val SurfaceLight = Color(0xFFFFF0F5)
-val BackgroundLight = Color(0xFFFAF5FF)
-val CardBackground = Color(0xFFFFFFFF)
-val CardBackgroundAlt = Color(0xFFFDF2F8)
-val BackgroundGradientStart = Color(0xFFFFF0F5)
-val BackgroundGradientEnd = Color(0xFFF5F0FF)
-
-val CardElevation1 = Color(0xFFFFFBFC)
-val CardElevation2 = Color(0xFFFFF5F8)
-val CardElevation3 = Color(0xFFFFF0F5)
-
-val TextPrimary = Color(0xFF1F1035)
-val TextSecondary = Color(0xFF6B5B7B)
-val TextHint = Color(0xFFB0A0C0)

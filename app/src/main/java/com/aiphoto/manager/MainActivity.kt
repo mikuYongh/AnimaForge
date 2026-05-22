@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
             val useDarkTheme = isSystemInDarkTheme()
 
             AIPromptManagerTheme(
-                themeMode = themeMode ?: ThemeMode.BLUE_WHITE,
+                themeMode = themeMode ?: ThemeMode.MIKU_SAKURA,
                 darkTheme = useDarkTheme,
             ) {
                 com.aiphoto.manager.ui.navigation.AppNavGraph()

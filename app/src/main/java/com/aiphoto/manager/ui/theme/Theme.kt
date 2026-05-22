@@ -12,12 +12,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-val LocalAppColorSet = compositionLocalOf { colorSetFor(ThemeMode.BLUE_WHITE, false) }
-val LocalThemeMode = compositionLocalOf { ThemeMode.BLUE_WHITE }
+val LocalAppColorSet = compositionLocalOf { colorSetFor(ThemeMode.MIKU_SAKURA, false) }
+val LocalThemeMode = compositionLocalOf { ThemeMode.MIKU_SAKURA }
 
 @Composable
 fun AIPromptManagerTheme(
-    themeMode: ThemeMode = ThemeMode.BLUE_WHITE,
+    themeMode: ThemeMode = ThemeMode.MIKU_SAKURA,
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {

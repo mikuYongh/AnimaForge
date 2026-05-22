@@ -6,14 +6,15 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
 enum class ThemeMode(val displayName: String) {
-    BLUE_WHITE("蓝白二次元"),
-    SAKURA_PINK("樱花物语"),
-    DARK_PURPLE("暗夜幻境"),
-    MINT_OCEAN("薄荷深海");
+    MIKU_SAKURA("初音樱花粉"),
+    MIKU_BLUE("初音经典蓝"),
+    MIKU_GREEN("初音葱绿色"),
+    DARK_PURPLE("暗夜星辰"),
+    CYBER_NEON("赛博极光");
 
     companion object {
         fun fromName(name: String): ThemeMode =
-            entries.find { it.name == name } ?: BLUE_WHITE
+            entries.find { it.name == name } ?: MIKU_SAKURA
     }
 }
 
@@ -43,280 +44,321 @@ data class AppColorSet(
 
 fun colorSetFor(mode: ThemeMode, darkTheme: Boolean): AppColorSet {
     return when (mode) {
-        ThemeMode.BLUE_WHITE -> if (darkTheme) blueWhiteDark else blueWhiteLight
-        ThemeMode.SAKURA_PINK -> if (darkTheme) sakuraDark else sakuraLight
-        ThemeMode.DARK_PURPLE -> darkPurpleSet
-        ThemeMode.MINT_OCEAN -> if (darkTheme) mintDark else mintLight
+        ThemeMode.MIKU_SAKURA -> if (darkTheme) mikuSakuraDark else mikuSakuraLight
+        ThemeMode.MIKU_BLUE -> if (darkTheme) mikuBlueDark else mikuBlueLight
+        ThemeMode.MIKU_GREEN -> if (darkTheme) mikuGreenDark else mikuGreenLight
+        ThemeMode.DARK_PURPLE -> mikuDarkSet
+        ThemeMode.CYBER_NEON -> cyberNeonSet
     }
 }
 
 // ============================================
-// 蓝白二次元 (默认)
+// 1. 初音未来樱花粉 (MIKU_SAKURA)
 // ============================================
-private val blueWhiteLight = AppColorSet(
+private val mikuSakuraLight = AppColorSet(
     colorScheme = lightColorScheme(
-        primary = Color(0xFF4A90D9),
+        primary = MikuSakuraPrimary,
         onPrimary = Color.White,
-        primaryContainer = Color(0xFFD6EBFF),
-        onPrimaryContainer = Color(0xFF1A3A5C),
-        secondary = Color(0xFF6EC6F8),
+        primaryContainer = Color(0xFFFFD6E4),
+        onPrimaryContainer = Color(0xFF6A0C35),
+        secondary = MikuSakuraSecondary,
         onSecondary = Color.White,
-        secondaryContainer = Color(0xFFD6F0FF),
-        onSecondaryContainer = Color(0xFF1B4050),
-        tertiary = Color(0xFFFF8FAB),
+        secondaryContainer = Color(0xFFF5E8FF),
+        onSecondaryContainer = Color(0xFF381060),
+        tertiary = MikuSakuraTertiary,
         onTertiary = Color.White,
-        tertiaryContainer = Color(0xFFFFD6E3),
-        onTertiaryContainer = Color(0xFF4A2030),
-        background = Color(0xFFF0F5FF),
-        onBackground = Color(0xFF1A2A3A),
+        tertiaryContainer = Color(0xFFFFF0F5),
+        onTertiaryContainer = Color(0xFF5A1A32),
+        background = Color(0xFFFFFAFB),
+        onBackground = Color(0xFF2C101E),
         surface = Color.White,
-        onSurface = Color(0xFF1A2A3A),
-        surfaceVariant = Color(0xFFE8F0FE),
-        onSurfaceVariant = Color(0xFF607088),
-        error = Color(0xFFFF6B7A),
+        onSurface = Color(0xFF2C101E),
+        surfaceVariant = Color(0xFFFFEFF3),
+        onSurfaceVariant = Color(0xFF8C586E),
+        error = ErrorSoft,
         onError = Color.White,
-        outline = Color(0xFFB3C8E0),
-        outlineVariant = Color(0xFFD6E4F4)
+        outline = Color(0xFFFFB8D0),
+        outlineVariant = Color(0xFFFFE5EE)
     ),
-    bgGradientStart = Color(0xFFE8F2FF),
-    bgGradientEnd = Color(0xFFFFF0F5),
-    btnGradientStart = Color(0xFF4A90D9),
-    btnGradientEnd = Color(0xFF6EC6F8),
-    cardBackgroundAlt = Color(0xFFF5F9FF),
-    shimmerBase = Color(0xFFE0E8F0),
-    shimmerHighlight = Color(0xFFF0F5FF),
-    promptChipPositive = "#4A90D9",
-    promptChipNegative = "#B0A0D0",
-    promptChipArtist = "#6EC6F8"
-)
-
-private val blueWhiteDark = AppColorSet(
-    colorScheme = darkColorScheme(
-        primary = Color(0xFF6EB8FF),
-        onPrimary = Color(0xFF0A243C),
-        primaryContainer = Color(0xFF2A5080),
-        onPrimaryContainer = Color(0xFFD6EBFF),
-        secondary = Color(0xFF7DD3FC),
-        onSecondary = Color(0xFF0A2A3C),
-        secondaryContainer = Color(0xFF2A5890),
-        onSecondaryContainer = Color(0xFFD6F0FF),
-        tertiary = Color(0xFFFF8FAB),
-        onTertiary = Color(0xFF4A2030),
-        tertiaryContainer = Color(0xFF6A4050),
-        onTertiaryContainer = Color(0xFFFFD6E3),
-        background = Color(0xFF0D1420),
-        onBackground = Color(0xFFE8F0FE),
-        surface = Color(0xFF192435),
-        onSurface = Color(0xFFE8F0FE),
-        surfaceVariant = Color(0xFF243040),
-        onSurfaceVariant = Color(0xFFB0C0D4),
-        error = Color(0xFFFF8A94),
-        onError = Color(0xFF301020),
-        outline = Color(0xFF506080),
-        outlineVariant = Color(0xFF344460)
-    ),
-    bgGradientStart = Color(0xFF0D1420),
-    bgGradientEnd = Color(0xFF152030),
-    btnGradientStart = Color(0xFF4A90D9),
-    btnGradientEnd = Color(0xFF6EB8FF),
-    cardBackgroundAlt = Color(0xFF1E2A3C),
-    shimmerBase = Color(0xFF1A2638),
-    shimmerHighlight = Color(0xFF243040),
-    promptChipPositive = "#4A90D9",
-    promptChipNegative = "#A090C8",
-    promptChipArtist = "#6EC6F8"
-)
-
-// ============================================
-// 樱花物语 (保留原有粉色调)
-// ============================================
-private val sakuraLight = AppColorSet(
-    colorScheme = lightColorScheme(
-        primary = Color(0xFFFF6B9D),
-        onPrimary = Color.White,
-        primaryContainer = Color(0xFFFFB3CC),
-        onPrimaryContainer = Color(0xFF1F1035),
-        secondary = Color(0xFFC084FC),
-        onSecondary = Color.White,
-        secondaryContainer = Color(0xFFDDD6FE),
-        onSecondaryContainer = Color(0xFF1F1035),
-        tertiary = Color(0xFF67E8F9),
-        onTertiary = Color(0xFF1F1035),
-        tertiaryContainer = Color(0xFFA5F3FC),
-        onTertiaryContainer = Color(0xFF1F1035),
-        background = Color(0xFFFAF5FF),
-        onBackground = Color(0xFF1F1035),
-        surface = Color(0xFFFFF0F5),
-        onSurface = Color(0xFF1F1035),
-        surfaceVariant = Color(0xFFFDF2F8),
-        onSurfaceVariant = Color(0xFF6B5B7B),
-        error = Color(0xFFFF8A80),
-        onError = Color.White,
-        outline = Color(0xFFFFB3CC),
-        outlineVariant = Color(0xFFDDD6FE)
-    ),
-    bgGradientStart = Color(0xFFFFF0F5),
-    bgGradientEnd = Color(0xFFF5F0FF),
-    btnGradientStart = Color(0xFFFF6B9D),
-    btnGradientEnd = Color(0xFFC084FC),
-    cardBackgroundAlt = Color(0xFFFDF2F8),
-    shimmerBase = Color(0xFFF5E8F0),
+    bgGradientStart = MikuSakuraBgStart,
+    bgGradientEnd = MikuSakuraBgEnd,
+    btnGradientStart = MikuSakuraPrimary,
+    btnGradientEnd = MikuSakuraSecondary,
+    cardBackgroundAlt = Color(0xFFFFEFF3),
+    shimmerBase = Color(0xFFFBE4EC),
     shimmerHighlight = Color(0xFFFFF0F5),
-    promptChipPositive = "#FFC0D0",
-    promptChipNegative = "#D8B4FE",
-    promptChipArtist = "#B0D8FF"
+    promptChipPositive = "#FF74A3",
+    promptChipNegative = "#BA84FC",
+    promptChipArtist = "#FFB8D0"
 )
 
-private val sakuraDark = AppColorSet(
+private val mikuSakuraDark = AppColorSet(
     colorScheme = darkColorScheme(
-        primary = Color(0xFFFF8FAB),
-        onPrimary = Color(0xFF1F1035),
-        primaryContainer = Color(0xFFE6457A),
-        onPrimaryContainer = Color(0xFF2A1F35),
-        secondary = Color(0xFFD4B5FE),
-        onSecondary = Color(0xFF1F1035),
-        secondaryContainer = Color(0xFF9F5FE0),
-        onSecondaryContainer = Color(0xFF2A1F35),
-        tertiary = Color(0xFF67E8F9),
-        onTertiary = Color(0xFF1F1035),
-        tertiaryContainer = Color(0xFF22D3EE),
-        onTertiaryContainer = Color(0xFF2A1F35),
-        background = Color(0xFF0D0815),
-        onBackground = Color(0xFFF5F0FF),
-        surface = Color(0xFF1A0F24),
-        onSurface = Color(0xFFF5F0FF),
-        surfaceVariant = Color(0xFF322840),
-        onSurfaceVariant = Color(0xFFB8A0C8),
-        error = Color(0xFFFF8A80),
-        onError = Color(0xFFF5F0FF),
-        outline = Color(0xFFE6457A),
-        outlineVariant = Color(0xFF9F5FE0)
+        primary = MikuSakuraPrimary,
+        onPrimary = Color(0xFF4C0322),
+        primaryContainer = Color(0xFF8F1E4A),
+        onPrimaryContainer = Color(0xFFFFD6E4),
+        secondary = MikuSakuraSecondary,
+        onSecondary = Color(0xFF38006B),
+        secondaryContainer = Color(0xFF5A2A9A),
+        onSecondaryContainer = Color(0xFFF5E8FF),
+        tertiary = MikuSakuraTertiary,
+        onTertiary = Color(0xFF5A1A32),
+        tertiaryContainer = Color(0xFF6E2845),
+        onTertiaryContainer = Color(0xFFFFF0F5),
+        background = Color(0xFF1C0A12),
+        onBackground = Color(0xFFFFE5EE),
+        surface = Color(0xFF2D1420),
+        onSurface = Color(0xFFFFE5EE),
+        surfaceVariant = Color(0xFF3E1D2D),
+        onSurfaceVariant = Color(0xFFD6A0B8),
+        error = ErrorSoft,
+        onError = Color(0xFF4C0322),
+        outline = Color(0xFF8F1E4A),
+        outlineVariant = Color(0xFF5E1232)
     ),
-    bgGradientStart = Color(0xFF0D0815),
-    bgGradientEnd = Color(0xFF1A0F24),
-    btnGradientStart = Color(0xFFFF8FAB),
-    btnGradientEnd = Color(0xFFD4B5FE),
-    cardBackgroundAlt = Color(0xFF322840),
-    shimmerBase = Color(0xFF1A1228),
-    shimmerHighlight = Color(0xFF242036),
-    promptChipPositive = "#FFC0D0",
-    promptChipNegative = "#D8B4FE",
-    promptChipArtist = "#B0D8FF"
+    bgGradientStart = Color(0xFF1C0A12),
+    bgGradientEnd = Color(0xFF2C1024),
+    btnGradientStart = MikuSakuraPrimary,
+    btnGradientEnd = MikuSakuraSecondary,
+    cardBackgroundAlt = Color(0xFF3E1D2D),
+    shimmerBase = Color(0xFF301524),
+    shimmerHighlight = Color(0xFF3E1D2D),
+    promptChipPositive = "#FF74A3",
+    promptChipNegative = "#BA84FC",
+    promptChipArtist = "#FFB8D0"
 )
 
 // ============================================
-// 暗夜幻境 (始终暗色)
+// 2. 初音未来经典蓝 (MIKU_BLUE)
 // ============================================
-private val darkPurpleSet = AppColorSet(
-    colorScheme = darkColorScheme(
-        primary = Color(0xFFC084FC),
-        onPrimary = Color(0xFF1A0F24),
-        primaryContainer = Color(0xFF6030A0),
-        onPrimaryContainer = Color(0xFFE8D8FF),
-        secondary = Color(0xFFFF7597),
-        onSecondary = Color(0xFF1A0F24),
-        secondaryContainer = Color(0xFF804060),
-        onSecondaryContainer = Color(0xFFFFD0DE),
-        tertiary = Color(0xFF00E5FF),
-        onTertiary = Color(0xFF1A0F24),
-        tertiaryContainer = Color(0xFF007880),
-        onTertiaryContainer = Color(0xFFB0F8FF),
-        background = Color(0xFF0B0815),
-        onBackground = Color(0xFFEDE0FF),
-        surface = Color(0xFF1A0F28),
-        onSurface = Color(0xFFEDE0FF),
-        surfaceVariant = Color(0xFF261840),
-        onSurfaceVariant = Color(0xFFC0B0D8),
-        error = Color(0xFFFF6080),
-        onError = Color(0xFF1A0F24),
-        outline = Color(0xFF8050B0),
-        outlineVariant = Color(0xFF402868)
-    ),
-    bgGradientStart = Color(0xFF0B0815),
-    bgGradientEnd = Color(0xFF140D24),
-    btnGradientStart = Color(0xFFC084FC),
-    btnGradientEnd = Color(0xFFFF7597),
-    cardBackgroundAlt = Color(0xFF221838),
-    shimmerBase = Color(0xFF1A102C),
-    shimmerHighlight = Color(0xFF261C40),
-    promptChipPositive = "#C084FC",
-    promptChipNegative = "#FF8A80",
-    promptChipArtist = "#00BCD4"
-)
-
-// ============================================
-// 薄荷深海
-// ============================================
-private val mintLight = AppColorSet(
+private val mikuBlueLight = AppColorSet(
     colorScheme = lightColorScheme(
-        primary = Color(0xFF0891B2),
+        primary = MikuBluePrimary,
         onPrimary = Color.White,
-        primaryContainer = Color(0xFFCCF3F8),
-        onPrimaryContainer = Color(0xFF002A38),
-        secondary = Color(0xFF4ADE80),
+        primaryContainer = Color(0xFFD2F5F3),
+        onPrimaryContainer = Color(0xFF003835),
+        secondary = MikuBlueSecondary,
         onSecondary = Color.White,
-        secondaryContainer = Color(0xFFD4F5E0),
-        onSecondaryContainer = Color(0xFF003010),
-        tertiary = Color(0xFFF59E0B),
+        secondaryContainer = Color(0xFFE0F7FF),
+        onSecondaryContainer = Color(0xFF003B52),
+        tertiary = MikuBlueTertiary,
         onTertiary = Color.White,
-        tertiaryContainer = Color(0xFFFEF3C7),
-        onTertiaryContainer = Color(0xFF402800),
-        background = Color(0xFFF0FDFA),
-        onBackground = Color(0xFF162820),
+        tertiaryContainer = Color(0xFFECFDFF),
+        onTertiaryContainer = Color(0xFF00444A),
+        background = Color(0xFFF6FDFD),
+        onBackground = Color(0xFF002927),
         surface = Color.White,
-        onSurface = Color(0xFF162820),
-        surfaceVariant = Color(0xFFE0F5F0),
-        onSurfaceVariant = Color(0xFF506860),
-        error = Color(0xFFEF4444),
+        onSurface = Color(0xFF002927),
+        surfaceVariant = Color(0xFFE6F5F4),
+        onSurfaceVariant = Color(0xFF4FA09D),
+        error = ErrorSoft,
         onError = Color.White,
-        outline = Color(0xFFA0D0C8),
-        outlineVariant = Color(0xFFCCE8E4)
+        outline = Color(0xFFA2E5E1),
+        outlineVariant = Color(0xFFD2F5F3)
     ),
-    bgGradientStart = Color(0xFFF0FDFA),
-    bgGradientEnd = Color(0xFFE0F8F8),
-    btnGradientStart = Color(0xFF0891B2),
-    btnGradientEnd = Color(0xFF4ADE80),
-    cardBackgroundAlt = Color(0xFFF5FCFA),
-    shimmerBase = Color(0xFFE0F0EC),
-    shimmerHighlight = Color(0xFFF0FDF8),
-    promptChipPositive = "#0891B2",
-    promptChipNegative = "#C084FC",
-    promptChipArtist = "#4ADE80"
+    bgGradientStart = MikuBlueBgStart,
+    bgGradientEnd = MikuBlueBgEnd,
+    btnGradientStart = MikuBluePrimary,
+    btnGradientEnd = MikuBlueSecondary,
+    cardBackgroundAlt = Color(0xFFE6F5F4),
+    shimmerBase = Color(0xFFD2EDE9),
+    shimmerHighlight = Color(0xFFE2FAF7),
+    promptChipPositive = "#39C5BB",
+    promptChipNegative = "#BA84FC",
+    promptChipArtist = "#22B9EE"
 )
 
-private val mintDark = AppColorSet(
+private val mikuBlueDark = AppColorSet(
     colorScheme = darkColorScheme(
-        primary = Color(0xFF22D3EE),
-        onPrimary = Color(0xFF002A38),
-        primaryContainer = Color(0xFF005060),
-        onPrimaryContainer = Color(0xFFCCF3F8),
-        secondary = Color(0xFF86EFAC),
-        onSecondary = Color(0xFF003010),
-        secondaryContainer = Color(0xFF205830),
-        onSecondaryContainer = Color(0xFFD4F5E0),
-        tertiary = Color(0xFFFCD34D),
-        onTertiary = Color(0xFF402800),
-        tertiaryContainer = Color(0xFF604800),
-        onTertiaryContainer = Color(0xFFFEF3C7),
-        background = Color(0xFF0A1510),
-        onBackground = Color(0xFFD8F8F0),
-        surface = Color(0xFF152A20),
-        onSurface = Color(0xFFD8F8F0),
-        surfaceVariant = Color(0xFF203830),
-        onSurfaceVariant = Color(0xFFA0C0B4),
-        error = Color(0xFFF87171),
-        onError = Color(0xFF301010),
-        outline = Color(0xFF507868),
-        outlineVariant = Color(0xFF304C40)
+        primary = MikuBluePrimary,
+        onPrimary = Color(0xFF003835),
+        primaryContainer = Color(0xFF005A56),
+        onPrimaryContainer = Color(0xFFD2F5F3),
+        secondary = MikuBlueSecondary,
+        onSecondary = Color(0xFF003347),
+        secondaryContainer = Color(0xFF004E6C),
+        onSecondaryContainer = Color(0xFFE0F7FF),
+        tertiary = MikuBlueTertiary,
+        onTertiary = Color(0xFF00373C),
+        tertiaryContainer = Color(0xFF00565F),
+        onTertiaryContainer = Color(0xFFECFDFF),
+        background = Color(0xFF061414),
+        onBackground = Color(0xFFD2EDE9),
+        surface = Color(0xFF102626),
+        onSurface = Color(0xFFD2EDE9),
+        surfaceVariant = Color(0xFF183B3B),
+        onSurfaceVariant = Color(0xFF86CBC7),
+        error = ErrorSoft,
+        onError = Color(0xFF003835),
+        outline = Color(0xFF005A56),
+        outlineVariant = Color(0xFF003E3B)
     ),
-    bgGradientStart = Color(0xFF0A1510),
-    bgGradientEnd = Color(0xFF102018),
-    btnGradientStart = Color(0xFF22D3EE),
-    btnGradientEnd = Color(0xFF86EFAC),
-    cardBackgroundAlt = Color(0xFF1A3028),
-    shimmerBase = Color(0xFF182820),
-    shimmerHighlight = Color(0xFF203830),
-    promptChipPositive = "#22D3EE",
-    promptChipNegative = "#C084FC",
-    promptChipArtist = "#86EFAC"
+    bgGradientStart = Color(0xFF061414),
+    bgGradientEnd = Color(0xFF0D2529),
+    btnGradientStart = MikuBluePrimary,
+    btnGradientEnd = MikuBlueSecondary,
+    cardBackgroundAlt = Color(0xFF183B3B),
+    shimmerBase = Color(0xFF122C2C),
+    shimmerHighlight = Color(0xFF183B3B),
+    promptChipPositive = "#39C5BB",
+    promptChipNegative = "#BA84FC",
+    promptChipArtist = "#22B9EE"
+)
+
+// ============================================
+// 3. 初音未来葱绿 (MIKU_GREEN)
+// ============================================
+private val mikuGreenLight = AppColorSet(
+    colorScheme = lightColorScheme(
+        primary = MikuGreenPrimary,
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFFE2F8DE),
+        onPrimaryContainer = Color(0xFF153C10),
+        secondary = MikuGreenSecondary,
+        onSecondary = Color(0xFF3E2723),
+        secondaryContainer = Color(0xFFFFF9C4),
+        onSecondaryContainer = Color(0xFF5D4037),
+        tertiary = MikuGreenTertiary,
+        onTertiary = Color(0xFF003538),
+        tertiaryContainer = Color(0xFFE0F7FA),
+        onTertiaryContainer = Color(0xFF004D40),
+        background = Color(0xFFF9FDF9),
+        onBackground = Color(0xFF10250E),
+        surface = Color.White,
+        onSurface = Color(0xFF10250E),
+        surfaceVariant = Color(0xFFEDF8EA),
+        onSurfaceVariant = Color(0xFF679E61),
+        error = ErrorSoft,
+        onError = Color.White,
+        outline = Color(0xFFB5E5B0),
+        outlineVariant = Color(0xFFE2F8DE)
+    ),
+    bgGradientStart = MikuGreenBgStart,
+    bgGradientEnd = MikuGreenBgEnd,
+    btnGradientStart = MikuGreenPrimary,
+    btnGradientEnd = MikuGreenSecondary,
+    cardBackgroundAlt = Color(0xFFEDF8EA),
+    shimmerBase = Color(0xFFDEEDE0),
+    shimmerHighlight = Color(0xFFEEFAF1),
+    promptChipPositive = "#7DC876",
+    promptChipNegative = "#BA84FC",
+    promptChipArtist = "#FFD54F"
+)
+
+private val mikuGreenDark = AppColorSet(
+    colorScheme = darkColorScheme(
+        primary = MikuGreenPrimary,
+        onPrimary = Color(0xFF153C10),
+        primaryContainer = Color(0xFF2D5C26),
+        onPrimaryContainer = Color(0xFFE2F8DE),
+        secondary = MikuGreenSecondary,
+        onSecondary = Color(0xFF3E2723),
+        secondaryContainer = Color(0xFF8C7B1E),
+        onSecondaryContainer = Color(0xFFFFF9C4),
+        tertiary = MikuGreenTertiary,
+        onTertiary = Color(0xFF003538),
+        tertiaryContainer = Color(0xFF205E64),
+        onTertiaryContainer = Color(0xFFE0F7FA),
+        background = Color(0xFF091408),
+        onBackground = Color(0xFFDEEDE0),
+        surface = Color(0xFF152613),
+        onSurface = Color(0xFFDEEDE0),
+        surfaceVariant = Color(0xFF223B20),
+        onSurfaceVariant = Color(0xFF90C28A),
+        error = ErrorSoft,
+        onError = Color(0xFF153C10),
+        outline = Color(0xFF2D5C26),
+        outlineVariant = Color(0xFF1D3B18)
+    ),
+    bgGradientStart = Color(0xFF091408),
+    bgGradientEnd = Color(0xFF1A2612),
+    btnGradientStart = MikuGreenPrimary,
+    btnGradientEnd = MikuGreenSecondary,
+    cardBackgroundAlt = Color(0xFF223B20),
+    shimmerBase = Color(0xFF162914),
+    shimmerHighlight = Color(0xFF223B20),
+    promptChipPositive = "#7DC876",
+    promptChipNegative = "#BA84FC",
+    promptChipArtist = "#FFD54F"
+)
+
+// ============================================
+// 4. 暗夜星辰 (DARK_PURPLE)
+// ============================================
+private val mikuDarkSet = AppColorSet(
+    colorScheme = darkColorScheme(
+        primary = MikuDarkPrimary,
+        onPrimary = Color(0xFF280056),
+        primaryContainer = Color(0xFF4F278C),
+        onPrimaryContainer = Color(0xFFEEDDFF),
+        secondary = MikuDarkSecondary,
+        onSecondary = Color(0xFF003835),
+        secondaryContainer = Color(0xFF005652),
+        onSecondaryContainer = Color(0xFFD2F5F3),
+        tertiary = MikuDarkTertiary,
+        onTertiary = Color(0xFF4C0320),
+        tertiaryContainer = Color(0xFF7A2548),
+        onTertiaryContainer = Color(0xFFFFD6E1),
+        background = MikuDarkBgStart,
+        onBackground = Color(0xFFEEDDFF),
+        surface = Color(0xFF170D28),
+        onSurface = Color(0xFFEEDDFF),
+        surfaceVariant = Color(0xFF22113A),
+        onSurfaceVariant = Color(0xFFC0A2E2),
+        error = ErrorSoft,
+        onError = Color(0xFF280056),
+        outline = Color(0xFF6B45A8),
+        outlineVariant = Color(0xFF3D2168)
+    ),
+    bgGradientStart = MikuDarkBgStart,
+    bgGradientEnd = MikuDarkBgEnd,
+    btnGradientStart = MikuDarkPrimary,
+    btnGradientEnd = MikuDarkSecondary,
+    cardBackgroundAlt = Color(0xFF22113A),
+    shimmerBase = Color(0xFF1D0E31),
+    shimmerHighlight = Color(0xFF2A1545),
+    promptChipPositive = "#BB86FC",
+    promptChipNegative = "#FF7597",
+    promptChipArtist = "#39C5BB"
+)
+
+// ============================================
+// 5. 赛博极光 (CYBER_NEON)
+// ============================================
+private val cyberNeonSet = AppColorSet(
+    colorScheme = darkColorScheme(
+        primary = CyberNeonPrimary,
+        onPrimary = Color(0xFF3A1F00),
+        primaryContainer = Color(0xFF704400),
+        onPrimaryContainer = Color(0xFFFFE0B2),
+        secondary = CyberNeonSecondary,
+        onSecondary = Color(0xFF00383B),
+        secondaryContainer = Color(0xFF00646B),
+        onSecondaryContainer = Color(0xFFE0F7FA),
+        tertiary = CyberNeonTertiary,
+        onTertiary = Color(0xFF310047),
+        tertiaryContainer = Color(0xFF5D1E80),
+        onTertiaryContainer = Color(0xFFF3E5F5),
+        background = CyberNeonBgStart,
+        onBackground = Color(0xFFE0E6ED),
+        surface = Color(0xFF10162B),
+        onSurface = Color(0xFFE0E6ED),
+        surfaceVariant = Color(0xFF1B2342),
+        onSurfaceVariant = Color(0xFF8CA5CF),
+        error = ErrorSoft,
+        onError = Color(0xFF3A1F00),
+        outline = Color(0xFF905900),
+        outlineVariant = Color(0xFF543400)
+    ),
+    bgGradientStart = CyberNeonBgStart,
+    bgGradientEnd = CyberNeonBgEnd,
+    btnGradientStart = CyberNeonPrimary,
+    btnGradientEnd = CyberNeonSecondary,
+    cardBackgroundAlt = Color(0xFF1B2342),
+    shimmerBase = Color(0xFF141B32),
+    shimmerHighlight = Color(0xFF202A4C),
+    promptChipPositive = "#FF8500",
+    promptChipNegative = "#BA68C8",
+    promptChipArtist = "#00E5FF"
 )

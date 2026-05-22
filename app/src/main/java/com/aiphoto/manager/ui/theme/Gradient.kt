@@ -3,47 +3,51 @@ package com.aiphoto.manager.ui.theme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-// 按钮渐变 - 蓝白主题
+// ============================================
+// 兼容旧代码的静态渐变定义，现已映射至初音未来定制配色
+// ============================================
+
+// 按钮渐变 - 蓝白/经典蓝
 val ButtonGradientBlueWhite = Brush.horizontalGradient(
-    colors = listOf(BlueWhitePrimary, BlueWhiteSecondary)
+    colors = listOf(MikuBluePrimary, MikuBlueSecondary)
 )
 
 // 按钮渐变 - 樱花粉
 val ButtonGradientSakura = Brush.horizontalGradient(
-    colors = listOf(SakuraPink, LavenderPurple)
+    colors = listOf(MikuSakuraPrimary, MikuSakuraSecondary)
 )
 
 // 辅助渐变
 val ButtonGradientSecondary = Brush.horizontalGradient(
-    colors = listOf(LavenderPurple, MintBlue)
+    colors = listOf(MikuSakuraSecondary, MikuBluePrimary)
 )
 
 // 卡片渐变
 val CardGradientPink = Brush.linearGradient(
     colors = listOf(
-        Color(0xFFFFB8D0),
-        Color(0xFFFF8FAB)
+        MikuSakuraTertiary,
+        MikuSakuraPrimary
     )
 )
 
 val CardGradientPurple = Brush.linearGradient(
     colors = listOf(
-        Color(0xFFEBCCFF),
-        Color(0xFFD4B5FE)
+        Color(0xFFEEDDFF),
+        MikuSakuraSecondary
     )
 )
 
 val CardGradientOcean = Brush.linearGradient(
     colors = listOf(
-        Color(0xFFA5F3FC),
-        Color(0xFF67E8F9)
+        MikuBlueTertiary,
+        MikuBluePrimary
     )
 )
 
 val CardGradientSky = Brush.linearGradient(
     colors = listOf(
-        Color(0xFFD6EBFF),
-        Color(0xFFA0DDFA)
+        Color(0xFFD2F5F3),
+        MikuBlueSecondary
     )
 )
 
@@ -60,19 +64,19 @@ val ShimmerGradient = Brush.linearGradient(
 val OverlayGradient = Brush.verticalGradient(
     colors = listOf(
         Color.Transparent,
-        Color.Black.copy(alpha = 0.1f)
+        Color.Black.copy(alpha = 0.15f)
     )
 )
 
 val AccentGradient = Brush.radialGradient(
     colors = listOf(
-        SakuraPink.copy(alpha = 0.3f),
+        MikuSakuraPrimary.copy(alpha = 0.25f),
         Color.Transparent
     )
 )
 
 // ============================================
-// 主题感知渐变工厂
+// 主题感知渐变工厂 (Theme-Aware Gradient Factory)
 // ============================================
 object ThemeGradients {
     fun backgroundGradient(colorSet: AppColorSet): Brush =
@@ -84,7 +88,7 @@ object ThemeGradients {
     fun cardGlowGradient(colorSet: AppColorSet): Brush =
         Brush.radialGradient(
             colors = listOf(
-                colorSet.colorScheme.primary.copy(alpha = 0.08f),
+                colorSet.colorScheme.primary.copy(alpha = 0.12f),
                 Color.Transparent
             )
         )
@@ -92,7 +96,7 @@ object ThemeGradients {
     fun heroGradient(colorSet: AppColorSet): Brush =
         Brush.verticalGradient(
             colors = listOf(
-                colorSet.colorScheme.primaryContainer,
+                colorSet.colorScheme.primaryContainer.copy(alpha = 0.8f),
                 colorSet.colorScheme.background
             )
         )
@@ -101,7 +105,7 @@ object ThemeGradients {
 // 兼容旧代码的 BackgroundGradient
 val BackgroundGradient = Brush.verticalGradient(
     colors = listOf(
-        Color(0xFFFFF0F5),
-        Color(0xFFF5F0FF)
+        MikuSakuraBgStart,
+        MikuSakuraBgEnd
     )
 )
