@@ -1,10 +1,14 @@
 package com.aiphoto.manager.ui.component
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,14 +35,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,24 +62,44 @@ fun PromptCard(
     val prompt = promptWithTags.prompt
     val tags = promptWithTags.tags
     val images = promptWithTags.images
-    var isPressed by remember { mutableStateOf(false) }
-    val elevation by animateFloatAsState(
-        targetValue = if (isPressed) 1f else 4f,
-        animationSpec = tween(200)
+
+    // Elastic Scale Animation
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
     )
 
     Card(
         modifier = modifier
+            .graphicsLayer(
+                scaleX = scale,
+                scaleY = scale
+            )
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .border(
+                width = if (isPressed) 2.dp else 1.dp,
+                color = if (isPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                shape = RoundedCornerShape(20.dp)
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
         shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = elevation.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isPressed) 1.dp else 3.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f) // Glassmorphism backdrop
         )
     ) {
         Column {
-            // 图片区域带渐变叠加
+            // Image Area with overlay gradient
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -101,8 +124,8 @@ fun PromptCard(
                             .background(
                                 Brush.horizontalGradient(
                                     colors = listOf(
-                                        MaterialTheme.colorScheme.primaryContainer,
-                                        MaterialTheme.colorScheme.secondaryContainer
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
                                     )
                                 )
                             ),
@@ -117,7 +140,7 @@ fun PromptCard(
                     }
                 }
 
-                // 底部渐变遮罩
+                // Bottom cover gradient
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -127,7 +150,7 @@ fun PromptCard(
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
                                 )
                             )
                         )
@@ -135,7 +158,7 @@ fun PromptCard(
             }
 
             Column(modifier = Modifier.padding(12.dp)) {
-                // 标题行 + 收藏/置顶
+                // Title Row
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -171,7 +194,7 @@ fun PromptCard(
                     }
                 }
 
-                // 标签预览
+                // Tag Preview
                 if (tags.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     FlowRow(
