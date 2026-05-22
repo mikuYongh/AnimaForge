@@ -98,6 +98,9 @@ import com.aiphoto.manager.ui.component.TagChip
 import kotlinx.coroutines.launch
 import com.aiphoto.manager.ui.component.TagInput
 import com.aiphoto.manager.ui.theme.LocalAppColorSet
+import com.aiphoto.manager.ui.component.AuraParticlesBackground
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.TopAppBarDefaults
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -251,40 +254,48 @@ fun EditScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(if (existingPrompt != null) "编辑提示词" else "新建提示词", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showSettingsDialog = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "设置")
-                    }
-                    IconButton(
-                        onClick = {
-                            viewModel.onPositivePromptChange(positivePromptList.joinToString(", "))
-                            viewModel.onNegativePromptChange(negativePromptList.joinToString(", "))
-                            viewModel.onArtistPromptChange(artistPromptList.joinToString(", "))
-                            viewModel.savePrompt(onNavigateBack)
-                        },
-                        enabled = title.isNotBlank()
-                    ) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = "保存",
-                            tint = if (title.isNotBlank()) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                modifier = Modifier.statusBarsPadding()
-            )
-        }
-    ) { innerPadding ->
+    AuraParticlesBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(if (existingPrompt != null) "编辑提示词" else "新建提示词", fontWeight = FontWeight.SemiBold) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showSettingsDialog = true }) {
+                            Icon(Icons.Default.Settings, contentDescription = "设置")
+                        }
+                        IconButton(
+                            onClick = {
+                                viewModel.onPositivePromptChange(positivePromptList.joinToString(", "))
+                                viewModel.onNegativePromptChange(negativePromptList.joinToString(", "))
+                                viewModel.onArtistPromptChange(artistPromptList.joinToString(", "))
+                                viewModel.savePrompt(onNavigateBack)
+                            },
+                            enabled = title.isNotBlank()
+                        ) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "保存",
+                                tint = if (title.isNotBlank()) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.statusBarsPadding()
+                )
+            }
+        ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -484,6 +495,7 @@ fun EditScreen(
         }
     }
 }
+}
 
 // ==================== 辅助组件 ====================
 
@@ -532,10 +544,17 @@ private fun PromptSectionCard(
     chipLabelPlural: String = "个提示词"
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(16.dp)
+            ),
         shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
         )
     ) {
         Column(modifier = Modifier.padding(14.dp)) {

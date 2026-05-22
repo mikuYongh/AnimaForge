@@ -36,7 +36,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aiphoto.manager.ui.component.AuraParticlesBackground
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,29 +71,37 @@ fun WorkflowEditScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(if (workflowId != null) "编辑工作流" else "新建工作流") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            viewModel.saveWorkflow(name, description, workflowJson, selectedType, onNavigateBack)
-                        },
-                        enabled = name.isNotBlank() && workflowJson.isNotBlank()
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = "保存")
-                    }
-                },
-                modifier = Modifier.statusBarsPadding()
-            )
-        }
-    ) { innerPadding ->
+    AuraParticlesBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(if (workflowId != null) "编辑工作流" else "新建工作流", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                viewModel.saveWorkflow(name, description, workflowJson, selectedType, onNavigateBack)
+                            },
+                            enabled = name.isNotBlank() && workflowJson.isNotBlank()
+                        ) {
+                            Icon(Icons.Default.Check, contentDescription = "保存")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.statusBarsPadding()
+                )
+            }
+        ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -153,4 +165,5 @@ fun WorkflowEditScreen(
             )
         }
     }
+}
 }

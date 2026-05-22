@@ -19,6 +19,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aiphoto.manager.util.WorkflowInfo
 import java.text.SimpleDateFormat
 import java.util.*
+import com.aiphoto.manager.ui.component.AuraParticlesBackground
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,27 +38,32 @@ fun ComfyUIHistoryScreen(
         viewModel.loadHistory()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("ComfyUI 历史记录") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.loadHistory() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+    AuraParticlesBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text("ComfyUI 历史记录") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.loadHistory() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.statusBarsPadding()
                 )
-            )
-        }
-    ) { padding ->
+            }
+        ) { padding ->
         if (isLoading) {
             Box(
                 modifier = Modifier
@@ -93,6 +102,7 @@ fun ComfyUIHistoryScreen(
         }
     }
 }
+}
 
 @Composable
 private fun WorkflowHistoryCard(
@@ -102,8 +112,18 @@ private fun WorkflowHistoryCard(
     var expanded by remember { mutableStateOf(false) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(16.dp)
+            ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // 头部信息
@@ -153,6 +173,15 @@ private fun WorkflowHistoryCard(
                 // 正向提示词
                 workflowInfo.positivePrompt?.let { prompt ->
                     Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(12.dp)
+                            ),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                         )
@@ -185,6 +214,15 @@ private fun WorkflowHistoryCard(
                 // 负向提示词
                 workflowInfo.negativePrompt?.let { prompt ->
                     Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(12.dp)
+                            ),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
                         )
@@ -216,8 +254,17 @@ private fun WorkflowHistoryCard(
 
                 // 参数信息
                 Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                     )
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {

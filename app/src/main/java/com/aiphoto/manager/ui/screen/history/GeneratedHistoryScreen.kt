@@ -5,6 +5,9 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Color
+import com.aiphoto.manager.ui.component.AuraParticlesBackground
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -212,50 +215,60 @@ fun GeneratedHistoryScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("生成历史") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
-        if (images.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("还没有生成记录", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.padding(innerPadding),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(images, key = { it.id }) { image ->
-                    GeneratedImageCard(
-                        image = image,
-                        onDelete = { viewModel.deleteImage(image.id) },
-                        onClick = {
-                            // 点击打开全屏预览
-                            previewImagePath = image.imagePath
-                            showImagePreview = true
-                        },
-                        onLongClick = {
-                            // 长按显示保存确认对话框
-                            selectedImagePath = image.imagePath
-                            showSaveDialog = true
+    AuraParticlesBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text("生成历史") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                         }
-                    )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.statusBarsPadding()
+                )
+            }
+        ) { innerPadding ->
+            if (images.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("还没有生成记录", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.padding(innerPadding),
+                    contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(images, key = { it.id }) { image ->
+                        GeneratedImageCard(
+                            image = image,
+                            onDelete = { viewModel.deleteImage(image.id) },
+                            onClick = {
+                                // 点击打开全屏预览
+                                previewImagePath = image.imagePath
+                                showImagePreview = true
+                            },
+                            onLongClick = {
+                                // 长按显示保存确认对话框
+                                selectedImagePath = image.imagePath
+                                showSaveDialog = true
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -275,11 +288,20 @@ private fun GeneratedImageCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(12.dp)
+            )
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+        )
     ) {
         Box {
             AsyncImage(

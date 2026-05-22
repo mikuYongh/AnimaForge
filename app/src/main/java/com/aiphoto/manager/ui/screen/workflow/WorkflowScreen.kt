@@ -35,8 +35,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.border
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aiphoto.manager.data.local.entity.WorkflowEntity
+import com.aiphoto.manager.ui.component.AuraParticlesBackground
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,28 +53,36 @@ fun WorkflowScreen(
 ) {
     val workflows by viewModel.workflows.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("工作流管理") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                modifier = Modifier.statusBarsPadding()
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onAddWorkflow,
-                containerColor = MaterialTheme.colorScheme.primary,
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "添加")
+    AuraParticlesBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text("工作流管理", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.statusBarsPadding()
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = onAddWorkflow,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "添加")
+                }
             }
-        }
-    ) { innerPadding ->
+        ) { innerPadding ->
         if (workflows.isEmpty()) {
             Column(
                 modifier = Modifier
@@ -117,6 +130,7 @@ fun WorkflowScreen(
         }
     }
 }
+}
 
 @Composable
 private fun WorkflowCard(
@@ -126,9 +140,16 @@ private fun WorkflowCard(
     onSetDefault: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().border(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+            shape = RoundedCornerShape(16.dp)
+        ),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             androidx.compose.foundation.layout.Row(

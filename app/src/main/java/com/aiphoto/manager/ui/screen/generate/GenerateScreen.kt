@@ -7,6 +7,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
+import com.aiphoto.manager.ui.component.AuraParticlesBackground
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -292,18 +296,27 @@ fun GenerateScreen(
         viewModel.loadFavoritePrompts()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("生成图片") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
+    AuraParticlesBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text("生成图片") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.statusBarsPadding()
+                )
+            }
+        ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -314,8 +327,18 @@ fun GenerateScreen(
             // 提示词信息
             promptData?.let { data ->
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                    )
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -405,8 +428,18 @@ fun GenerateScreen(
             // 如果检测到图生图工作流，显示图片选择
             if (workflowType == "img2img") {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                    )
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -454,8 +487,17 @@ fun GenerateScreen(
             // 当工作流需要图片但未选择图片时
             if (workflowType == "img2img" && selectedInputImages.isEmpty()) {
                 Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.error,
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f)
                     )
                 ) {
                     Row(
@@ -605,9 +647,16 @@ fun GenerateScreen(
 
             // 高级参数设置（折叠）
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(16.dp)
+                    ),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(
@@ -656,8 +705,16 @@ fun GenerateScreen(
 
             // 使用工作流宽高选项（所有工作流都显示）
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -687,9 +744,16 @@ fun GenerateScreen(
             // 进度卡片
             if (isGenerating) {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -790,6 +854,11 @@ fun GenerateScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(1f)
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
                                 .combinedClickable(
                                     onClick = {
                                         // 点击打开预览
@@ -802,7 +871,9 @@ fun GenerateScreen(
                                         showSaveDialog = true
                                     }
                                 ),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
                         ) {
                             AsyncImage(
                                 model = java.io.File(imagePath),
@@ -816,6 +887,7 @@ fun GenerateScreen(
             }
         }
     }
+}
 }
 
 @Composable

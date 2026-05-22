@@ -39,9 +39,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.border
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aiphoto.manager.data.model.Template
 import com.aiphoto.manager.ui.component.TagChip
+import com.aiphoto.manager.ui.component.AuraParticlesBackground
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -54,67 +59,76 @@ fun TemplateScreen(
     val categories = viewModel.categories
     val filteredTemplates = viewModel.getTemplatesByCategory(selectedCategory)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("模板") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                modifier = Modifier.statusBarsPadding()
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // Category filter chips
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                TagChip(
-                    text = "全部",
-                    color = "#E0E0E0",
-                    isSelected = selectedCategory == null,
-                    onClick = { selectedCategory = null }
+    AuraParticlesBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text("模板", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.statusBarsPadding()
                 )
-                categories.forEach { category ->
-                    TagChip(
-                        text = category,
-                        color = when (category) {
-                            "动漫" -> "#FFC0D0"
-                            "写实" -> "#93C5FD"
-                            "水彩" -> "#86EFAC"
-                            "像素" -> "#FDE68A"
-                            "油画" -> "#FDBA74"
-                            "科幻" -> "#D8B4FE"
-                            "奇幻" -> "#FCA5A5"
-                            else -> "#FFC0D0"
-                        },
-                        isSelected = selectedCategory == category,
-                        onClick = { selectedCategory = category }
-                    )
-                }
             }
-
-            // Template grid
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
             ) {
-                items(filteredTemplates) { template ->
-                    TemplateCard(
-                        template = template,
-                        onClick = { onUseTemplate(template) }
+                // Category filter chips
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    TagChip(
+                        text = "全部",
+                        color = "#E0E0E0",
+                        isSelected = selectedCategory == null,
+                        onClick = { selectedCategory = null }
                     )
+                    categories.forEach { category ->
+                        TagChip(
+                            text = category,
+                            color = when (category) {
+                                "动漫" -> "#FFC0D0"
+                                "写实" -> "#93C5FD"
+                                "水彩" -> "#86EFAC"
+                                "像素" -> "#FDE68A"
+                                "油画" -> "#FDBA74"
+                                "科幻" -> "#D8B4FE"
+                                "奇幻" -> "#FCA5A5"
+                                else -> "#FFC0D0"
+                            },
+                            isSelected = selectedCategory == category,
+                            onClick = { selectedCategory = category }
+                        )
+                    }
+                }
+
+                // Template grid
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredTemplates) { template ->
+                        TemplateCard(
+                            template = template,
+                            onClick = { onUseTemplate(template) }
+                        )
+                    }
                 }
             }
         }
@@ -130,11 +144,16 @@ private fun TemplateCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(16.dp)
+            ),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
         )
     ) {
         Column(
