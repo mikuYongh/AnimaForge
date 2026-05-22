@@ -105,7 +105,8 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
         "heun" to "heun",
         "dpm_2" to "dpm_2",
         "dpm_2_ancestral" to "dpm_2_ancestral",
-        "er_sde" to "er_sde"
+        "er_sde" to "er_sde",
+        "dpmpp_2m_sde_gpu" to "dpmpp_2m_sde_gpu",
     )
 
     // KSampler 专用调度器选项
