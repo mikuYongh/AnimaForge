@@ -2,6 +2,7 @@ package com.aiphoto.manager.ui.screen.detail
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.aiphoto.manager.ui.component.ArtistPreviewDialog
+import com.aiphoto.manager.ui.component.AuraParticlesBackground
 import com.aiphoto.manager.ui.component.TagChip
 import com.aiphoto.manager.ui.theme.LocalAppColorSet
 import com.aiphoto.manager.ui.theme.tagColorFor
@@ -105,7 +107,7 @@ fun DetailScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("删除提示词") },
+            title = { Text("删除提示词", fontWeight = FontWeight.Bold) },
             text = { Text("确定要删除这个提示词吗？此操作无法撤销。") },
             confirmButton = {
                 TextButton(
@@ -114,7 +116,7 @@ fun DetailScreen(
                         viewModel.deletePrompt(onNavigateBack)
                     }
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text("删除", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -134,240 +136,275 @@ fun DetailScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(prompt?.title ?: "加载中...") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    prompt?.let { p ->
-                        IconButton(onClick = { onNavigateToGenerate(p.id) }) {
-                            Icon(
-                                Icons.Default.PlayArrow,
-                                contentDescription = "生成",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+    AuraParticlesBackground {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent, // Transparent background to show particles
+            topBar = {
+                TopAppBar(
+                    title = { Text(prompt?.title ?: "加载中...", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                         }
-                        IconButton(onClick = {
-                            viewModel.clonePrompt { clonedId ->
-                                onNavigateToCloned(clonedId)
+                    },
+                    actions = {
+                        prompt?.let { p ->
+                            IconButton(onClick = { onNavigateToGenerate(p.id) }) {
+                                Icon(
+                                    Icons.Default.PlayArrow,
+                                    contentDescription = "生成",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                             }
-                        }) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = "克隆")
+                            IconButton(onClick = {
+                                viewModel.clonePrompt { clonedId ->
+                                    onNavigateToCloned(clonedId)
+                                }
+                            }) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = "克隆")
+                            }
+                            IconButton(onClick = { onNavigateToEdit(p.id) }) {
+                                Icon(Icons.Default.Edit, contentDescription = "编辑")
+                            }
+                            IconButton(onClick = { showDeleteDialog = true }) {
+                                Icon(Icons.Default.Delete, contentDescription = "删除")
+                            }
                         }
-                        IconButton(onClick = { onNavigateToEdit(p.id) }) {
-                            Icon(Icons.Default.Edit, contentDescription = "编辑")
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.statusBarsPadding()
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { innerPadding ->
+            prompt?.let { p ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                ) {
+                    // 图片轮播
+                    if (images.isNotEmpty()) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(images.size) { index ->
+                                AsyncImage(
+                                    model = File(images[index].imagePath),
+                                    contentDescription = "参考图片",
+                                    modifier = Modifier
+                                        .height(200.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .border(
+                                            width = 1.dp,
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                            shape = RoundedCornerShape(16.dp)
+                                        ),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
                         }
-                        IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "删除")
-                        }
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
-                },
-                modifier = Modifier.statusBarsPadding()
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { innerPadding ->
-        prompt?.let { p ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
-            ) {
-                // 图片轮播
-                if (images.isNotEmpty()) {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(images.size) { index ->
-                            AsyncImage(
-                                model = File(images[index].imagePath),
-                                contentDescription = "参考图片",
-                                modifier = Modifier
-                                    .height(200.dp)
-                                    .clip(RoundedCornerShape(16.dp)),
-                                contentScale = ContentScale.Crop
+
+                    // 描述
+                    if (p.description.isNotBlank()) {
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                        ) {
+                            Text(
+                                text = p.description,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp)
                             )
                         }
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
 
-                // 描述
-                if (p.description.isNotBlank()) {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    // 标签
+                    if (tags.isNotEmpty()) {
                         Text(
-                            text = p.description,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp)
+                            text = "标签",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
-                // 标签
-                if (tags.isNotEmpty()) {
-                    Text(
-                        text = "标签",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        tags.forEach { tag ->
-                            TagChip(
-                                text = tag.name,
-                                color = tagColorFor(tag.name),
-                                isSelected = false
-                            )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            tags.forEach { tag ->
+                                TagChip(
+                                    text = tag.name,
+                                    color = tagColorFor(tag.name),
+                                    isSelected = false
+                                )
+                            }
                         }
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
 
-                // 正向提示词
-                if (p.positivePrompt.isNotBlank()) {
-                    PromptChipsSection(
-                        title = "正向提示词",
-                        prompts = p.positivePrompt.split(",").map { it.trim() }.filter { it.isNotBlank() },
-                        color = colorSet.promptChipPositive,
-                        promptType = "positive",
-                        onCopy = {
-                            clipboardManager.setText(AnnotatedString(p.positivePrompt))
-                            scope.launch {
-                                snackbarHostState.showSnackbar("已复制！")
-                            }
-                        },
-                        onCopySingle = { prompt ->
-                            clipboardManager.setText(AnnotatedString(prompt))
-                            scope.launch {
-                                snackbarHostState.showSnackbar("已复制: $prompt")
-                            }
-                        },
-                        onFavorite = { content, type ->
-                            viewModel.toggleFavoritePrompt(content, type)
-                        },
-                        favoritePrompts = favoritePrompts
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+                    // 正向提示词
+                    if (p.positivePrompt.isNotBlank()) {
+                        PromptChipsSection(
+                            title = "正向提示词",
+                            prompts = p.positivePrompt.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                            color = colorSet.promptChipPositive,
+                            promptType = "positive",
+                            onCopy = {
+                                clipboardManager.setText(AnnotatedString(p.positivePrompt))
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("已复制！")
+                                }
+                            },
+                            onCopySingle = { prompt ->
+                                clipboardManager.setText(AnnotatedString(prompt))
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("已复制: $prompt")
+                                }
+                            },
+                            onFavorite = { content, type ->
+                                viewModel.toggleFavoritePrompt(content, type)
+                            },
+                            favoritePrompts = favoritePrompts
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
 
-                // 负向提示词
-                if (p.negativePrompt.isNotBlank()) {
-                    PromptChipsSection(
-                        title = "负向提示词",
-                        prompts = p.negativePrompt.split(",").map { it.trim() }.filter { it.isNotBlank() },
-                        color = colorSet.promptChipNegative,
-                        promptType = "negative",
-                        onCopy = {
-                            clipboardManager.setText(AnnotatedString(p.negativePrompt))
-                            scope.launch {
-                                snackbarHostState.showSnackbar("已复制！")
-                            }
-                        },
-                        onCopySingle = { prompt ->
-                            clipboardManager.setText(AnnotatedString(prompt))
-                            scope.launch {
-                                snackbarHostState.showSnackbar("已复制: $prompt")
-                            }
-                        },
-                        onFavorite = { content, type ->
-                            viewModel.toggleFavoritePrompt(content, type)
-                        },
-                        favoritePrompts = favoritePrompts
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+                    // 负向提示词
+                    if (p.negativePrompt.isNotBlank()) {
+                        PromptChipsSection(
+                            title = "负向提示词",
+                            prompts = p.negativePrompt.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                            color = colorSet.promptChipNegative,
+                            promptType = "negative",
+                            onCopy = {
+                                clipboardManager.setText(AnnotatedString(p.negativePrompt))
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("已复制！")
+                                }
+                            },
+                            onCopySingle = { prompt ->
+                                clipboardManager.setText(AnnotatedString(prompt))
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("已复制: $prompt")
+                                }
+                            },
+                            onFavorite = { content, type ->
+                                viewModel.toggleFavoritePrompt(content, type)
+                            },
+                            favoritePrompts = favoritePrompts
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
 
-                // 画师 - 支持点击查看作品
-                if (p.artistPrompt.isNotBlank()) {
-                    PromptChipsSection(
-                        title = "画师",
-                        prompts = p.artistPrompt.split(",").map { it.trim() }.filter { it.isNotBlank() },
-                        color = colorSet.promptChipArtist,
-                        promptType = "artist",
-                        onCopy = {
-                            clipboardManager.setText(AnnotatedString(p.artistPrompt))
-                            scope.launch {
-                                snackbarHostState.showSnackbar("已复制！")
-                            }
-                        },
-                        onCopySingle = { prompt ->
-                            clipboardManager.setText(AnnotatedString(prompt))
-                            scope.launch {
-                                snackbarHostState.showSnackbar("已复制: $prompt")
-                            }
-                        },
-                        onFavorite = { content, type ->
-                            viewModel.toggleFavoritePrompt(content, type)
-                        },
-                        onArtistClick = { artistTag ->
-                            previewArtistTag = artistTag
-                        },
-                        favoritePrompts = favoritePrompts
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+                    // 画师 - 支持点击查看作品
+                    if (p.artistPrompt.isNotBlank()) {
+                        PromptChipsSection(
+                            title = "画师",
+                            prompts = p.artistPrompt.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                            color = colorSet.promptChipArtist,
+                            promptType = "artist",
+                            onCopy = {
+                                clipboardManager.setText(AnnotatedString(p.artistPrompt))
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("已复制！")
+                                }
+                            },
+                            onCopySingle = { prompt ->
+                                clipboardManager.setText(AnnotatedString(prompt))
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("已复制: $prompt")
+                                }
+                            },
+                            onFavorite = { content, type ->
+                                viewModel.toggleFavoritePrompt(content, type)
+                            },
+                            onArtistClick = { artistTag ->
+                                previewArtistTag = artistTag
+                            },
+                            favoritePrompts = favoritePrompts
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
 
-                // 种子值和参数
-                if (p.seed.isNotBlank() || p.parameters.isNotBlank()) {
-                    OutlinedCard(
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            if (p.seed.isNotBlank()) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
+                    // 种子值和参数
+                    if (p.seed.isNotBlank() || p.parameters.isNotBlank()) {
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                if (p.seed.isNotBlank()) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            "种子值: ",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            p.seed,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+                                if (p.parameters.isNotBlank()) {
+                                    if (p.seed.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
                                     Text(
-                                        "种子值: ",
+                                        "参数:",
                                         style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        p.seed,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        p.parameters,
+                                        style = MaterialTheme.typography.bodySmall,
                                         fontFamily = FontFamily.Monospace
                                     )
                                 }
                             }
-                            if (p.parameters.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    "参数:",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    p.parameters,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(80.dp))
+                    Spacer(modifier = Modifier.height(80.dp))
+                }
             }
         }
     }
@@ -391,10 +428,15 @@ private fun PromptChipsSection(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
         ),
         modifier = Modifier
             .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                shape = RoundedCornerShape(16.dp)
+            )
             .combinedClickable(
                 onClick = {},
                 onLongClick = onCopy
@@ -410,7 +452,7 @@ private fun PromptChipsSection(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
                     if (isArtist) {

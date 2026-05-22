@@ -22,7 +22,7 @@ class SettingsViewModel : ViewModel() {
     private val _lastBackupTime = MutableStateFlow<Long?>(null)
     val lastBackupTime: StateFlow<Long?> = _lastBackupTime.asStateFlow()
 
-    private val _currentTheme = MutableStateFlow(ThemeMode.BLUE_WHITE)
+    private val _currentTheme = MutableStateFlow(ThemeMode.MIKU_SAKURA)
     val currentTheme: StateFlow<ThemeMode> = _currentTheme.asStateFlow()
 
     private val _comfyUIUrl = MutableStateFlow("")
