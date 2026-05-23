@@ -13,14 +13,17 @@ import com.aiphoto.manager.App
 import com.aiphoto.manager.api.ComfyUIClient
 import com.aiphoto.manager.data.SettingsManager
 import com.aiphoto.manager.data.local.entity.GeneratedImageEntity
+import com.aiphoto.manager.data.local.entity.PromptEntity
 import com.aiphoto.manager.data.model.PromptWithTags
 import com.aiphoto.manager.service.ImageGenerationService
+import com.google.gson.JsonParser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.UUID
 
 class GenerateViewModel(application: Application) : AndroidViewModel(application) {
@@ -257,6 +260,283 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
         sharedPreferences.edit().putString("last_kscheduler", scheduler).apply()
     }
 
+    // ============================================================
+    // SDXLEmptyLatentSizePicker+ 分辨率选项
+    // ============================================================
+
+    val resolutionOptions = listOf(
+        "704x1408 (0.5)", "704x1344 (0.52)", "768x1344 (0.57)", "768x1280 (0.6)",
+        "832x1216 (0.68)", "832x1152 (0.72)", "896x1152 (0.78)", "896x1088 (0.82)",
+        "960x1088 (0.88)", "960x1024 (0.94)", "1024x1024 (1.0)", "1024x960 (1.07)",
+        "1088x960 (1.13)", "1088x896 (1.21)", "1152x896 (1.29)", "1152x832 (1.38)",
+        "1216x832 (1.46)", "1280x768 (1.67)", "1344x768 (1.75)", "1344x704 (1.91)",
+        "1408x704 (2.0)", "1472x704 (2.09)", "1536x640 (2.4)", "1600x640 (2.5)",
+        "1664x576 (2.89)", "1728x576 (3.0)"
+    )
+
+    private val _selectedResolution = MutableStateFlow("896x1088 (0.82)")
+    val selectedResolution: StateFlow<String> = _selectedResolution
+
+    private val _hasSizePicker = MutableStateFlow(false)
+    val hasSizePicker: StateFlow<Boolean> = _hasSizePicker
+
+    /**
+     * 检测工作流是否含有 SDXLEmptyLatentSizePicker+ 节点
+     */
+    fun detectHasSizePicker(workflowJson: String?) {
+        if (workflowJson == null) {
+            _hasSizePicker.value = false
+            return
+        }
+        try {
+            val obj = JsonParser.parseString(workflowJson).asJsonObject
+            val has = obj.entrySet().any {
+                it.value.isJsonObject && it.value.asJsonObject.get("class_type")?.asString == "SDXLEmptyLatentSizePicker+"
+            }
+            _hasSizePicker.value = has
+            if (has) {
+                // 从工作流解析当前分辨率
+                for ((_, node) in obj.entrySet()) {
+                    if (node.isJsonObject && node.asJsonObject.get("class_type")?.asString == "SDXLEmptyLatentSizePicker+") {
+                        val widgets = node.asJsonObject.getAsJsonArray("widgets_values")
+                        if (widgets != null && widgets.size() > 0) {
+                            val res = widgets[0].asString
+                            if (res.isNotBlank()) _selectedResolution.value = res
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            _hasSizePicker.value = false
+        }
+    }
+
+    fun setSelectedResolution(resolution: String) {
+        _selectedResolution.value = resolution
+    }
+
+    /**
+     * 从分辨率字符串解析宽高 (如 "896x1088 (0.82)" → 896, 1088)
+     */
+    fun parseResolution(resolution: String): Pair<Int, Int> {
+        val parts = resolution.split("x")
+        val w = parts.getOrNull(0)?.trim()?.toIntOrNull() ?: 896
+        val h = parts.getOrNull(1)?.substringBefore(" ")?.trim()?.toIntOrNull() ?: 1088
+        return Pair(w, h)
+    }
+
+    // ============================================================
+    // 模型 / LoRA 配置状态
+    // ============================================================
+
+    private val _selectedBaseModel = MutableStateFlow<String?>(null)
+    val selectedBaseModel: StateFlow<String?> = _selectedBaseModel
+
+    // 可用模型列表（从 ComfyUI API 获取）
+    private val _availableModels = MutableStateFlow<List<String>>(emptyList())
+    val availableModels: StateFlow<List<String>> = _availableModels
+
+    private val _availableModelsLoading = MutableStateFlow(false)
+    val availableModelsLoading: StateFlow<Boolean> = _availableModelsLoading
+
+    // 可用 LoRA 列表
+    private val _availableLoras = MutableStateFlow<List<String>>(emptyList())
+    val availableLoras: StateFlow<List<String>> = _availableLoras
+
+    private val _availableLorasLoading = MutableStateFlow(false)
+    val availableLorasLoading: StateFlow<Boolean> = _availableLorasLoading
+
+    // 当前工作流中的 LoRA 配置列表
+    private val _workflowLoraConfigs = MutableStateFlow<List<LoraConfigItem>>(emptyList())
+    val workflowLoraConfigs: StateFlow<List<LoraConfigItem>> = _workflowLoraConfigs
+
+    // 正在从工作流解析的 LoRA 条目
+    data class LoraConfigItem(
+        val name: String,
+        val strength: Double = 1.0,
+        val enabled: Boolean = false
+    )
+
+    /**
+     * 从 ComfyUI API 加载可用模型和 LoRA 列表
+     */
+    fun loadAvailableModelsAndLoras() {
+        val serverUrl = runBlocking { settingsManager.comfyUiUrl.first() }
+        if (serverUrl.isBlank()) return
+
+        comfyUIClient.setServerUrl(serverUrl)
+
+        viewModelScope.launch {
+            _availableModelsLoading.value = true
+            val modelResult = comfyUIClient.getAvailableModels()
+            _availableModelsLoading.value = false
+            if (modelResult.isSuccess) {
+                _availableModels.value = modelResult.getOrDefault(emptyList())
+            }
+        }
+
+        viewModelScope.launch {
+            _availableLorasLoading.value = true
+            val loraResult = comfyUIClient.getAvailableLoras()
+            _availableLorasLoading.value = false
+            if (loraResult.isSuccess) {
+                _availableLoras.value = loraResult.getOrDefault(emptyList())
+            }
+        }
+    }
+
+    /**
+     * 从工作流 JSON 解析当前的 LoRA 列表
+     */
+    fun parseLoraFromWorkflow(workflowJson: String) {
+        try {
+            val workflowObj = JsonParser.parseString(workflowJson).asJsonObject
+            val loras = mutableListOf<LoraConfigItem>()
+
+            for ((_, nodeElement) in workflowObj.entrySet()) {
+                if (nodeElement.isJsonObject) {
+                    val nodeObj = nodeElement.asJsonObject
+                    val classType = nodeObj.get("class_type")?.asString ?: continue
+                    val inputs = if (nodeObj.has("inputs") && nodeObj.get("inputs").isJsonObject) {
+                        nodeObj.getAsJsonObject("inputs")
+                    } else null
+
+                    when (classType) {
+                        "UNETLoader" -> {
+                            // API 格式：inputs.unet_name
+                            if (inputs != null && inputs.has("unet_name")) {
+                                val model = inputs.get("unet_name").asString
+                                if (model.isNotBlank()) {
+                                    _selectedBaseModel.value = model
+                                }
+                            } else {
+                                // UI 格式回退：widgets_values[0]
+                                val widgets = nodeObj.getAsJsonArray("widgets_values")
+                                if (widgets != null && widgets.size() > 0) {
+                                    val model = widgets[0].asString
+                                    if (model.isNotBlank()) {
+                                        _selectedBaseModel.value = model
+                                    }
+                                }
+                            }
+                        }
+                        "Power Lora Loader (rgthree)" -> {
+                            // API 格式：inputs 中的 lora_1, lora_2, ... 键
+                            var foundInApi = false
+                            if (inputs != null) {
+                                val sortedKeys = inputs.keySet()
+                                    .filter { it.startsWith("lora_") }
+                                    .sortedBy { it.removePrefix("lora_").toIntOrNull() ?: Int.MAX_VALUE }
+                                for (key in sortedKeys) {
+                                    val loraObj = inputs.getAsJsonObject(key)
+                                    if (loraObj != null && loraObj.has("lora")) {
+                                        loras.add(
+                                            LoraConfigItem(
+                                                name = loraObj.get("lora").asString,
+                                                strength = loraObj.get("strength")?.asDouble ?: 1.0,
+                                                enabled = loraObj.get("on")?.asBoolean ?: false
+                                            )
+                                        )
+                                        foundInApi = true
+                                    }
+                                }
+                            }
+                            // UI 格式回退：widgets_values 数组
+                            if (!foundInApi) {
+                                val widgets = nodeObj.getAsJsonArray("widgets_values")
+                                if (widgets != null) {
+                                    for (i in 0 until widgets.size()) {
+                                        val item = widgets[i]
+                                        if (item.isJsonObject) {
+                                            val obj = item.asJsonObject
+                                            if (obj.has("lora")) {
+                                                loras.add(
+                                                    LoraConfigItem(
+                                                        name = obj.get("lora").asString,
+                                                        strength = obj.get("strength")?.asDouble ?: 1.0,
+                                                        enabled = obj.get("on")?.asBoolean ?: false
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            _workflowLoraConfigs.value = loras
+            _workflowLoraParsed = true
+            Log.d("GenerateVM", "解析工作流: 模型=${_selectedBaseModel.value}, LoRA=${loras.size}个")
+        } catch (e: Exception) {
+            Log.e("GenerateVM", "解析工作流 LoRA 失败", e)
+        }
+    }
+
+    // 标记是否刚从工作流解析了配置（用于防止 importLoraConfigsFromPrompt 覆盖）
+    private var _workflowLoraParsed = false
+
+    fun setBaseModel(model: String) {
+        _selectedBaseModel.value = model
+    }
+
+    fun updateLoraConfig(index: Int, config: LoraConfigItem) {
+        val list = _workflowLoraConfigs.value.toMutableList()
+        if (index < list.size) list[index] = config
+        _workflowLoraConfigs.value = list
+    }
+
+    fun addLora(name: String) {
+        val list = _workflowLoraConfigs.value.toMutableList()
+        if (list.none { it.name == name }) {
+            list.add(LoraConfigItem(name = name, strength = 1.0, enabled = true))
+            _workflowLoraConfigs.value = list
+        }
+    }
+
+    fun removeLora(index: Int) {
+        val list = _workflowLoraConfigs.value.toMutableList()
+        if (index < list.size) {
+            list.removeAt(index)
+            _workflowLoraConfigs.value = list
+        }
+    }
+
+    fun importLoraConfigsFromPrompt(prompt: PromptEntity) {
+        if (_workflowLoraParsed) return  // 已从工作流解析，不被旧 prompt 覆盖
+        if (prompt.baseModel != null) {
+            _selectedBaseModel.value = prompt.baseModel
+        }
+        if (!prompt.loraConfigs.isNullOrBlank()) {
+            try {
+                val arr = JsonParser.parseString(prompt.loraConfigs).asJsonArray
+                val list = arr.map {
+                    val obj = it.asJsonObject
+                    LoraConfigItem(
+                        name = obj.get("name").asString,
+                        strength = obj.get("strength")?.asDouble ?: 1.0,
+                        enabled = obj.get("enabled")?.asBoolean ?: false
+                    )
+                }
+                _workflowLoraConfigs.value = list
+            } catch (_: Exception) { }
+        }
+    }
+
+    fun exportLoraConfigsToJson(): String {
+        val arr = com.google.gson.JsonArray()
+        _workflowLoraConfigs.value.forEach { item ->
+            val obj = com.google.gson.JsonObject()
+            obj.addProperty("name", item.name)
+            obj.addProperty("strength", item.strength)
+            obj.addProperty("enabled", item.enabled)
+            arr.add(obj)
+        }
+        return com.google.gson.Gson().toJson(arr)
+    }
+
     // 设置选中的 KSampler
     fun setSelectedKSampler(sampler: String) {
         _selectedKSampler.value = sampler
@@ -344,6 +624,9 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
         ksamplerName: String = "euler_ancestral",
         kscheduler: String = "normal",
         artistPrompt: String = "",
+        baseModel: String? = null,
+        loraConfigs: String? = null,
+        resolution: String? = null,
         onSuccess: (String) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -386,6 +669,10 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
             putExtra(ImageGenerationService.EXTRA_KSCHEDULER, kscheduler)
             putExtra(ImageGenerationService.EXTRA_ARTIST_PROMPT, artistPrompt)
             putExtra(ImageGenerationService.EXTRA_COMFYUI_URL, comfyUrl)
+            // 模型/LoRA 配置
+            baseModel?.let { putExtra(ImageGenerationService.EXTRA_BASE_MODEL, it) }
+            loraConfigs?.let { putExtra(ImageGenerationService.EXTRA_LORA_CONFIGS, it) }
+            resolution?.let { putExtra(ImageGenerationService.EXTRA_RESOLUTION, it) }
             putStringArrayListExtra(
                 ImageGenerationService.EXTRA_INPUT_IMAGE_URIS,
                 ArrayList(inputImageUris.map { it.toString() })

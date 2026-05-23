@@ -109,6 +109,13 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
     private val _artistPrompt = MutableStateFlow("")
     val artistPrompt: StateFlow<String> = _artistPrompt
 
+    // 模型 / LoRA 配置
+    private val _baseModel = MutableStateFlow<String?>(null)
+    val baseModel: StateFlow<String?> = _baseModel
+
+    private val _loraConfigs = MutableStateFlow<String?>(null)
+    val loraConfigs: StateFlow<String?> = _loraConfigs
+
     val comfyUiUrl: StateFlow<String> = settingsManager.comfyUiUrl
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "http://192.168.123.178:8188")
 
@@ -137,6 +144,8 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
         _selectedTags.value = promptWithTags.tags
         _imagePaths.value = promptWithTags.images.map { it.imagePath }
         _artistPrompt.value = promptWithTags.prompt.artistPrompt
+        _baseModel.value = promptWithTags.prompt.baseModel
+        _loraConfigs.value = promptWithTags.prompt.loraConfigs
     }
 
     fun onTitleChange(v: String) { _title.value = v }
@@ -210,6 +219,8 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onArtistPromptChange(v: String) { _artistPrompt.value = v }
+    fun onBaseModelChange(v: String?) { _baseModel.value = v }
+    fun onLoraConfigsChange(v: String?) { _loraConfigs.value = v }
 
     fun loadArtistList() {
         viewModelScope.launch {
@@ -264,6 +275,8 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
                 isFavorite = if (isNew) false else originalIsFavorite,
                 isPinned = if (isNew) false else originalIsPinned,
                 artistPrompt = _artistPrompt.value,
+                baseModel = _baseModel.value,
+                loraConfigs = _loraConfigs.value,
                 createdAt = if (isNew) now else originalCreatedAt,
                 updatedAt = now
             )
