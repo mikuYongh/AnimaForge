@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -66,6 +67,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.aiphoto.manager.data.model.PromptWithTags
 import com.aiphoto.manager.ui.component.ImagePicker
+import com.aiphoto.manager.ui.component.ModelConfigSection
+import com.aiphoto.manager.ui.component.ModelConfigSectionLoraItem
+import com.aiphoto.manager.ui.theme.LocalAppColorSet
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -278,6 +282,7 @@ fun GenerateScreen(
             "text2img"
         }
         viewModel.setWorkflowType(type)
+        viewModel.detectHasSizePicker(workflow?.workflowJson)
     }
 
     LaunchedEffect(promptData) {
@@ -295,6 +300,36 @@ fun GenerateScreen(
     LaunchedEffect(Unit) {
         viewModel.loadFavoritePrompts()
     }
+
+    // 解析工作流 LoRA 配置并加载可用模型列表
+    LaunchedEffect(selectedWorkflowId, workflows) {
+        val workflow = if (selectedWorkflowId != null) {
+            workflows.find { it.id == selectedWorkflowId }
+        } else {
+            null
+        }
+        if (workflow != null) {
+            viewModel.parseLoraFromWorkflow(workflow.workflowJson)
+        }
+        viewModel.loadAvailableModelsAndLoras()
+    }
+
+    // 从提示词项目恢复已保存的模型/LoRA 配置
+    LaunchedEffect(promptData) {
+        promptData?.let {
+            viewModel.importLoraConfigsFromPrompt(it.prompt)
+        }
+    }
+
+    // 收集 ViewModel 的模型/LoRA 状态
+    val selectedBaseModel by viewModel.selectedBaseModel.collectAsState()
+    val availableModels by viewModel.availableModels.collectAsState()
+    val modelsLoading by viewModel.availableModelsLoading.collectAsState()
+    val workflowLoraConfigs by viewModel.workflowLoraConfigs.collectAsState()
+    val availableLoras by viewModel.availableLoras.collectAsState()
+    val lorasLoading by viewModel.availableLorasLoading.collectAsState()
+    val hasSizePicker by viewModel.hasSizePicker.collectAsState()
+    val selectedResolution by viewModel.selectedResolution.collectAsState()
 
     AuraParticlesBackground {
         Scaffold(
@@ -424,6 +459,34 @@ fun GenerateScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // 模型/LoRA 配置（仅文生图模式显示）
+            val appColorSet = LocalAppColorSet.current
+            if (workflowType == "text2img") {
+                ModelConfigSection(
+                    baseModel = selectedBaseModel,
+                    onBaseModelChange = { viewModel.setBaseModel(it) },
+                    availableModels = availableModels,
+                    modelsLoading = modelsLoading,
+                    loraConfigs = workflowLoraConfigs.map { lora ->
+                        ModelConfigSectionLoraItem(lora.name, lora.strength, lora.enabled)
+                    },
+                    availableLoras = availableLoras,
+                    lorasLoading = lorasLoading,
+                    onLoraToggle = { index, enabled ->
+                        val item = workflowLoraConfigs[index]
+                        viewModel.updateLoraConfig(index, item.copy(enabled = enabled))
+                    },
+                    onLoraStrengthChange = { index, strength ->
+                        val item = workflowLoraConfigs[index]
+                        viewModel.updateLoraConfig(index, item.copy(strength = strength))
+                    },
+                    onLoraAdd = { name -> viewModel.addLora(name) },
+                    onLoraRemove = { index -> viewModel.removeLora(index) },
+                    appColorSet = appColorSet
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             // 如果检测到图生图工作流，显示图片选择
             if (workflowType == "img2img") {
@@ -682,12 +745,63 @@ fun GenerateScreen(
 
                     if (showAdvanced) {
                         Spacer(modifier = Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            NumberField("宽度", genWidth, "896") { genWidth = it }
-                            NumberField("高度", genHeight, "1088") { genHeight = it }
+                        if (hasSizePicker) {
+                            // SDXLEmptyLatentSizePicker+ 工作流：分辨率下拉框
+                            Text(
+                                "分辨率",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            var showResMenu by remember { mutableStateOf(false) }
+                            Box {
+                                OutlinedButton(
+                                    onClick = { showResMenu = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(
+                                        selectedResolution,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Icon(
+                                        Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showResMenu,
+                                    onDismissRequest = { showResMenu = false }
+                                ) {
+                                    viewModel.resolutionOptions.forEach { res ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    res,
+                                                    fontWeight = if (res == selectedResolution) FontWeight.Bold else FontWeight.Normal
+                                                )
+                                            },
+                                            onClick = {
+                                                viewModel.setSelectedResolution(res)
+                                                val (w, h) = viewModel.parseResolution(res)
+                                                genWidth = w.toString()
+                                                genHeight = h.toString()
+                                                showResMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // 无 SDXLEmptyLatentSizePicker+：手动输入宽高
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                NumberField("宽度", genWidth, "896") { genWidth = it }
+                                NumberField("高度", genHeight, "1088") { genHeight = it }
+                            }
                         }
                         Spacer(modifier = Modifier.height(10.dp))
                         Row(
@@ -806,6 +920,9 @@ fun GenerateScreen(
                             denoise = denoiseStrength.toDouble(),
                             useWorkflowDimensions = useWorkflowDimensions,
                             artistPrompt = promptData.prompt.artistPrompt,
+                            baseModel = selectedBaseModel,
+                            loraConfigs = viewModel.exportLoraConfigsToJson(),
+                            resolution = if (hasSizePicker) selectedResolution else null,
                             onSuccess = { message ->
                                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                             },

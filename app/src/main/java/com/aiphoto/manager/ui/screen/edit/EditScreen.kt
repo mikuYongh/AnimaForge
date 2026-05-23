@@ -112,6 +112,9 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.filled.RocketLaunch
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Extension
 import com.aiphoto.manager.api.ArtistApiClient
 import com.aiphoto.manager.data.model.Artist
 import androidx.compose.ui.window.DialogProperties
@@ -143,6 +146,8 @@ fun EditScreen(
     val favoriteArtistPrompts by viewModel.favoriteArtistPrompts.collectAsState()
     val artistList by viewModel.artistList.collectAsState()
     val artistListLoading by viewModel.artistListLoading.collectAsState()
+    val baseModel by viewModel.baseModel.collectAsState()
+    val loraConfigs by viewModel.loraConfigs.collectAsState()
 
     var positiveSingleInput by remember { mutableStateOf("") }
     var positiveBatchInput by remember { mutableStateOf("") }
@@ -488,6 +493,85 @@ fun EditScreen(
                 chipLabelSingular = "画师",
                 chipLabelPlural = "个画师"
             )
+
+            // 模型/LoRA 配置信息（只读展示）
+            val appColorSet = LocalAppColorSet.current
+            val highlightColor = if (appColorSet.promptChipPositive.startsWith("#")) {
+                Color(android.graphics.Color.parseColor(appColorSet.promptChipPositive))
+            } else {
+                MaterialTheme.colorScheme.primary
+            }
+            if (baseModel != null || !loraConfigs.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.RocketLaunch,
+                                null,
+                                Modifier.size(16.dp),
+                                tint = highlightColor
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "模型 / LoRA 配置",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (baseModel != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Memory,
+                                    null,
+                                    Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "基础模型: ${baseModel!!.substringBefore(".")}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        if (!loraConfigs.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val loraCount = try {
+                                com.google.gson.JsonParser.parseString(loraConfigs).asJsonArray.size()
+                            } catch (_: Exception) { 0 }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Extension,
+                                    null,
+                                    Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "LoRA: $loraCount 个",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
