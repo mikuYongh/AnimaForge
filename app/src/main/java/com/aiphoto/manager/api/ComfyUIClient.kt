@@ -30,6 +30,12 @@ import java.io.FileOutputStream
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
+data class LoraConfig(
+    val name: String,
+    val strength: Double = 1.0,
+    val enabled: Boolean = true
+)
+
 class ComfyUIClient(private val context: Context) {
 
     private var baseUrl: String = "http://192.168.123.178:8188/"
@@ -91,6 +97,60 @@ class ComfyUIClient(private val context: Context) {
         initApi()
     }
 
+    // ============================================================
+    // 模型列表获取
+    // ============================================================
+
+    suspend fun getAvailableModels(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            val response = api!!.getUNETLoaderInfo()
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                val inputs = body.getAsJsonObject("UNETLoader")
+                    ?.getAsJsonObject("input")
+                    ?.getAsJsonObject("required")
+                val unetName = inputs?.getAsJsonArray("unet_name")
+                if (unetName != null) {
+                    val list = unetName[0].asJsonArray.map { it.asString }
+                    Log.d("ComfyUIClient", "获取到 ${list.size} 个基础模型")
+                    Result.success(list)
+                } else {
+                    Result.failure(Exception("无法解析模型列表"))
+                }
+            } else {
+                Result.failure(Exception("获取模型列表失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e("ComfyUIClient", "获取模型列表异常", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getAvailableLoras(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            val response = api!!.getLoraLoaderInfo()
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                val inputs = body.getAsJsonObject("LoraLoader")
+                    ?.getAsJsonObject("input")
+                    ?.getAsJsonObject("required")
+                val loraName = inputs?.getAsJsonArray("lora_name")
+                if (loraName != null) {
+                    val list = loraName[0].asJsonArray.map { it.asString }
+                    Log.d("ComfyUIClient", "获取到 ${list.size} 个 LoRA")
+                    Result.success(list)
+                } else {
+                    Result.failure(Exception("无法解析 LoRA 列表"))
+                }
+            } else {
+                Result.failure(Exception("获取 LoRA 列表失败: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e("ComfyUIClient", "获取 LoRA 列表异常", e)
+            Result.failure(e)
+        }
+    }
+
     private fun initApi() {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
@@ -129,6 +189,9 @@ class ComfyUIClient(private val context: Context) {
         inputImageFilename: String? = null,
         useWorkflowDimensions: Boolean = false,
         artistPrompt: String = "",
+        baseModel: String? = null,
+        loraConfigs: String? = null,
+        resolution: String? = null,
         clientId: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
@@ -144,7 +207,7 @@ class ComfyUIClient(private val context: Context) {
 
             val workflowJson = if (customWorkflow != null) {
                 val workflowObj = JsonParser.parseString(customWorkflow).asJsonObject
-                smartReplaceWorkflowParams(workflowObj, fullPositivePrompt, negativePrompt, actualSeed, steps, cfgScale, width, height, samplerName, scheduler, ksamplerName, kscheduler, denoise, inputImageFilename, useWorkflowDimensions)
+                smartReplaceWorkflowParams(workflowObj, fullPositivePrompt, negativePrompt, actualSeed, steps, cfgScale, width, height, samplerName, scheduler, ksamplerName, kscheduler, denoise, inputImageFilename, useWorkflowDimensions, baseModel, loraConfigs, resolution)
                 gson.toJson(workflowObj)
             } else {
                 createDefaultWorkflow(fullPositivePrompt, negativePrompt, actualSeed, width, height, steps, cfgScale, samplerName, scheduler)
@@ -196,7 +259,10 @@ class ComfyUIClient(private val context: Context) {
         kscheduler: String = "normal",
         denoise: Double = 1.0,
         inputImageName: String? = null,
-        useWorkflowDimensions: Boolean = false
+        useWorkflowDimensions: Boolean = false,
+        baseModel: String? = null,
+        loraConfigsJson: String? = null,
+        resolution: String? = null
     ) {
         for ((nodeId, nodeElement) in workflow.entrySet()) {
             if (nodeElement.isJsonObject) {
@@ -321,14 +387,11 @@ class ComfyUIClient(private val context: Context) {
                             }
                         }
 
-                        // SDXLEmptyLatentSizePicker+ - 替换尺寸
+                        // SDXLEmptyLatentSizePicker+ - 替换 resolution 字段，不改 width_override/height_override
                         "SDXLEmptyLatentSizePicker+" -> {
-                            if (!useWorkflowDimensions) {
-                                if (inputs.has("width_override")) {
-                                    inputs.addProperty("width_override", width)
-                                }
-                                if (inputs.has("height_override")) {
-                                    inputs.addProperty("height_override", height)
+                            if (!useWorkflowDimensions && resolution != null) {
+                                if (inputs.has("resolution")) {
+                                    inputs.addProperty("resolution", resolution)
                                 }
                             }
                         }
@@ -348,6 +411,60 @@ class ComfyUIClient(private val context: Context) {
                                 }
                                 if (inputs.has("height")) {
                                     inputs.addProperty("height", height)
+                                }
+                            }
+                        }
+
+                        // UNETLoader - 替换基础模型
+                        "UNETLoader" -> {
+                            if (baseModel != null && inputs.has("unet_name")) {
+                                inputs.addProperty("unet_name", baseModel)
+                            }
+                        }
+
+                        // Power Lora Loader (rgthree) - 替换 LoRA 配置
+                        "Power Lora Loader (rgthree)" -> {
+                            if (loraConfigsJson != null) {
+                                try {
+                                    val loraConfigs = gson.fromJson(loraConfigsJson, Array<LoraConfig>::class.java)
+                                    val configMap = loraConfigs.associateBy { it.name }
+                                    // API 格式：按名称匹配 inputs 中的 lora_N 键
+                                    val sortedLoraKeys = inputs.keySet()
+                                        .filter { it.startsWith("lora_") }
+                                        .sortedBy { it.removePrefix("lora_").toIntOrNull() ?: Int.MAX_VALUE }
+                                    for (key in sortedLoraKeys) {
+                                        val loraObj = inputs.getAsJsonObject(key)
+                                        if (loraObj != null && loraObj.has("lora")) {
+                                            val currentName = loraObj.get("lora").asString
+                                            val config = configMap[currentName]
+                                            if (config != null) {
+                                                loraObj.addProperty("on", config.enabled)
+                                                loraObj.addProperty("strength", config.strength)
+                                            }
+                                        }
+                                    }
+                                    // UI 格式回退：widgets_values 数组
+                                    if (sortedLoraKeys.isEmpty()) {
+                                        val widgets = nodeObj.getAsJsonArray("widgets_values")
+                                        if (widgets != null) {
+                                            for (wi in 0 until widgets.size()) {
+                                                val item = widgets[wi]
+                                                if (item.isJsonObject) {
+                                                    val obj = item.asJsonObject
+                                                    if (obj.has("lora")) {
+                                                        val currentName = obj.get("lora").asString
+                                                        val config = configMap[currentName]
+                                                        if (config != null) {
+                                                            obj.addProperty("on", config.enabled)
+                                                            obj.addProperty("strength", config.strength)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("ComfyUIClient", "替换 LoRA 配置失败", e)
                                 }
                             }
                         }

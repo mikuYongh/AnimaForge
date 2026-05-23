@@ -79,6 +79,9 @@ class ImageGenerationService : Service() {
         const val EXTRA_KSCHEDULER = "kscheduler"
         const val EXTRA_ARTIST_PROMPT = "artist_prompt"
         const val EXTRA_COMFYUI_URL = "comfyui_url"
+        const val EXTRA_BASE_MODEL = "base_model"
+        const val EXTRA_LORA_CONFIGS = "lora_configs"
+        const val EXTRA_RESOLUTION = "resolution"
     }
 
     inner class LocalBinder : Binder() {
@@ -119,6 +122,9 @@ class ImageGenerationService : Service() {
                 val kscheduler = intent.getStringExtra(EXTRA_KSCHEDULER) ?: "normal"
                 val artistPrompt = intent.getStringExtra(EXTRA_ARTIST_PROMPT) ?: ""
                 val serverUrl = intent.getStringExtra(EXTRA_COMFYUI_URL)
+                val baseModel = intent.getStringExtra(EXTRA_BASE_MODEL)
+                val loraConfigs = intent.getStringExtra(EXTRA_LORA_CONFIGS)
+                val resolution = intent.getStringExtra(EXTRA_RESOLUTION)
                 if (serverUrl != null) {
                     comfyUIClient.setServerUrl(serverUrl)
                 }
@@ -141,7 +147,10 @@ class ImageGenerationService : Service() {
                     useWorkflowDimensions = useWorkflowDimensions,
                     ksamplerName = ksamplerName,
                     kscheduler = kscheduler,
-                    artistPrompt = artistPrompt
+                    artistPrompt = artistPrompt,
+                    baseModel = baseModel,
+                    loraConfigs = loraConfigs,
+                    resolution = resolution
                 )
             }
             ACTION_STOP_GENERATION -> {
@@ -199,7 +208,10 @@ class ImageGenerationService : Service() {
         useWorkflowDimensions: Boolean = false,
         ksamplerName: String = "euler_ancestral",
         kscheduler: String = "normal",
-        artistPrompt: String = ""
+        artistPrompt: String = "",
+        baseModel: String? = null,
+        loraConfigs: String? = null,
+        resolution: String? = null
     ) {
         // 获取唤醒锁，防止锁屏后 CPU 休眠
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -312,6 +324,9 @@ class ImageGenerationService : Service() {
                             ksamplerName = ksamplerName,
                             kscheduler = kscheduler,
                             artistPrompt = artistPrompt,
+                            baseModel = baseModel,
+                            loraConfigs = loraConfigs,
+                            resolution = resolution,
                             clientId = clientId
                         )
 

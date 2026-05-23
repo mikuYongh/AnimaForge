@@ -38,6 +38,13 @@ interface ComfyUIApi {
     @Multipart
     @POST("upload/image")
     suspend fun uploadImage(@Part image: MultipartBody.Part): Response<Map<String, String>>
+
+    // 模型列表查询
+    @GET("object_info/UNETLoader")
+    suspend fun getUNETLoaderInfo(): Response<JsonObject>
+
+    @GET("object_info/LoraLoader")
+    suspend fun getLoraLoaderInfo(): Response<JsonObject>
 }
 
 data class HistoryResponse(
