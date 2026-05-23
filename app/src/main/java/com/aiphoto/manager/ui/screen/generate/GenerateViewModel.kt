@@ -468,15 +468,11 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
             }
 
             _workflowLoraConfigs.value = loras
-            _workflowLoraParsed = true
             Log.d("GenerateVM", "解析工作流: 模型=${_selectedBaseModel.value}, LoRA=${loras.size}个")
         } catch (e: Exception) {
             Log.e("GenerateVM", "解析工作流 LoRA 失败", e)
         }
     }
-
-    // 标记是否刚从工作流解析了配置（用于防止 importLoraConfigsFromPrompt 覆盖）
-    private var _workflowLoraParsed = false
 
     fun setBaseModel(model: String) {
         _selectedBaseModel.value = model
@@ -505,7 +501,6 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun importLoraConfigsFromPrompt(prompt: PromptEntity) {
-        if (_workflowLoraParsed) return  // 已从工作流解析，不被旧 prompt 覆盖
         if (prompt.baseModel != null) {
             _selectedBaseModel.value = prompt.baseModel
         }
@@ -535,6 +530,27 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
             arr.add(obj)
         }
         return com.google.gson.Gson().toJson(arr)
+    }
+
+    /**
+     * 将当前模型/LoRA 配置保存到 PromptEntity
+     */
+    fun saveModelConfigToPrompt(promptId: String) {
+        viewModelScope.launch {
+            try {
+                val prompt = promptDao.getPromptById(promptId)
+                val entity = prompt.first()?.prompt ?: return@launch
+                val updated = entity.copy(
+                    baseModel = _selectedBaseModel.value,
+                    loraConfigs = exportLoraConfigsToJson().ifBlank { null },
+                    updatedAt = System.currentTimeMillis()
+                )
+                promptDao.updatePrompt(updated)
+                Log.d("GenerateVM", "模型/LoRA 配置已保存到 prompt: $promptId")
+            } catch (e: Exception) {
+                Log.e("GenerateVM", "保存模型配置失败", e)
+            }
+        }
     }
 
     // 设置选中的 KSampler
@@ -646,6 +662,9 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
                 System.currentTimeMillis()
             )
         }
+
+        // 保存模型/LoRA 配置到提示词
+        saveModelConfigToPrompt(promptId)
 
         // 启动前台服务进行生成
         val comfyUrl = kotlinx.coroutines.runBlocking { settingsManager.comfyUiUrl.first() }
