@@ -31,10 +31,15 @@
 ### 核心功能
 
 - **提示词管理** — 本地数据库存储正向/负向/风格提示词，支持标签分类、搜索筛选、收藏置顶
-- **ComfyUI 集成** — 一键连接 ComfyUI 服务器，提交生成任务，实时查看进度与历史
+- **ComfyUI 集成** — 一键连接 ComfyUI 服务器，提交生成任务，实时 WebSocket 进度与历史
+- **工作流智能参数替换** — 自动识别 UNETLoader、Power Lora Loader、KSamplerAdvanced 等节点，替换提示词/种子/采样器/基础模型/LoRA 配置
+- **模型与 LoRA 配置** — 每套提示词独立绑定额模型和 LoRA 列表，支持开关/强度调节/添加删除
+- **SDXLEmptyLatentSizePicker+ 支持** — 分辨率下拉框 26 档预设，自动检测工作流类型切换 UI
 - **风格库** — 内置上千位画师风格数据，支持搜索、预览、一键添加
-- **多主题** — 蓝白二次元 / 樱花物语 / 暗夜幻境 / 薄荷深海 四套主题，随心切换
-- **工作流管理** — 保存和管理 ComfyUI 工作流 JSON，快速切换
+- **画师收藏夹** — 收藏常⽤画师，网格卡片展示，长按预览作品
+- **视频预览** — Media3 ExoPlayer 集成，图生视频结果播放
+- **多主题** — 樱花粉 / 经典蓝 / 葱绿 / 暗夜星辰 / 赛博极光 五套主题
+- **工作流管理** — 保存和管理 ComfyUI 工作流 JSON（含文生图/图生视频 Demo）
 - **数据安全** — SQLite + Room 本地存储，支持 JSON 导入导出和自动备份
 
 ### 技术栈
@@ -45,6 +50,7 @@
 - **数据库**: Room (SQLite) + DataStore Preferences
 - **网络**: OkHttp + Retrofit
 - **图片**: Coil
+- **视频**: Media3 ExoPlayer
 - **最低支持**: Android 8.0 (API 26)
 
 ### 致谢
@@ -64,10 +70,15 @@ Anima 模型由 **[circlestone-labs](https://huggingface.co/circlestone-labs/Ani
 ### Core Features
 
 - **Prompt Management** — Local SQLite storage for positive/negative/style prompts with tag categorization, search, favorites, and pinning
-- **ComfyUI Integration** — One-tap connection to ComfyUI servers, submit generation tasks, monitor progress and history in real-time
+- **ComfyUI Integration** — One-tap connection to ComfyUI servers with real-time WebSocket progress & history
+- **Smart Workflow Param Replacement** — Auto-detects UNETLoader, Power Lora Loader, KSamplerAdvanced nodes; replaces prompt/seed/sampler/base model/LoRA configs
+- **Model & LoRA Config** — Per-prompt base model selection and LoRA list with toggle/strength/add/remove
+- **SDXLEmptyLatentSizePicker+ Support** — 26 preset resolution dropdown, auto UI switching based on workflow type
 - **Artist Style Library** — 1000+ artist style tags with search, preview, and one-tap addition
-- **Multi-Theme** — Choose from Blue-White Anime / Sakura / Dark Neon / Mint Ocean
-- **Workflow Manager** — Save and manage ComfyUI workflow JSON presets
+- **Artist Favorites** — Bookmark favorite artists, grid card display, long-press to preview works
+- **Video Preview** — Media3 ExoPlayer integration for video generation results
+- **Multi-Theme** — Sakura Pink / Classic Blue / Mint Green / Dark Star / Cyber Neon
+- **Workflow Manager** — Save and manage ComfyUI workflow JSON presets (incl. text2img & img2video demos)
 - **Data Safety** — SQLite + Room local storage, JSON import/export, automatic backups
 
 ### Tech Stack
@@ -78,6 +89,7 @@ Anima 模型由 **[circlestone-labs](https://huggingface.co/circlestone-labs/Ani
 - **Database**: Room (SQLite) + DataStore Preferences
 - **Network**: OkHttp + Retrofit
 - **Image Loading**: Coil
+- **Video**: Media3 ExoPlayer
 - **Min SDK**: Android 8.0 (API 26)
 
 ### Acknowledgments
@@ -97,11 +109,16 @@ The Anima model is developed and open-sourced by **[circlestone-labs](https://hu
 ### 主な機能
 
 - **プロンプト管理** — ポジティブ/ネガティブ/スタイルのプロンプトをローカル SQLite に保存。タグ分類、検索フィルター、お気に入り登録、ピン留めに対応
-- **ComfyUI 連携** — ワンタップで ComfyUI サーバーに接続し、生成タスクを送信。進捗と履歴をリアルタイムで確認
-- **アーティストスタイルライブラリ** — 1000以上のアーティストスタイルタグを搭載。検索、プレビュー、ワンタップ追加が可能
-- **マルチテーマ** — 青白アニメ / 桜物語 / ダークネオン / ミントオーシャンの4テーマを自由に切替
-- **ワークフロー管理** — ComfyUI ワークフロー JSON を保存・管理し、素早く切替
-- **データ保護** — SQLite + Room によるローカル保存、JSON インポート/エクスポート、自動バックアップ対応
+- **ComfyUI 連携** — ワンタップで ComfyUI サーバーに接続し、WebSocket でリアルタイム進捗確認
+- **ワークフローパラメータ自動置換** — UNETLoader, Power Lora Loader, KSamplerAdvanced ノードを自動検出し、パラメータをスマートに置換
+- **モデル & LoRA 設定** — プロンプトごとにベースモデルと LoRA リストを紐付け、ON/OFF/強度調整/追加削除が可能
+- **SDXLEmptyLatentSizePicker+ 対応** — 26段階プリセット解像度ドロップダウン、ワークフロー種別に応じた自動UI切替
+- **アーティストスタイルライブラリ** — 1000以上のタグを搭載。検索、プレビュー、ワンタップ追加
+- **お気に入りアーティスト** — グリッドカード表示、長押しプレビュー
+- **動画プレビュー** — Media3 ExoPlayer 統合で生成動画を再生
+- **マルチテーマ** — 桜ピンク / クラシックブルー / ミントグリーン / ダークスター / サイバーネオン
+- **ワークフロー管理** — ComfyUI ワークフロー JSON を保存・管理（文生図 & 図生動画デモ付き）
+- **データ保護** — SQLite + Room によるローカル保存、JSON インポート/エクスポート、自動バックアップ
 
 ### 技術スタック
 
