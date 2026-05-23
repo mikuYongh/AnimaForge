@@ -29,7 +29,7 @@ import com.aiphoto.manager.data.local.entity.WorkflowEntity
         GeneratedImageEntity::class,
         FavoritePromptEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -81,6 +81,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // 从版本7迁移到版本8：为prompts表添加模型/LoRA配置字段
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE prompts ADD COLUMN baseModel TEXT")
+                database.execSQL("ALTER TABLE prompts ADD COLUMN loraConfigs TEXT")
+                database.execSQL("ALTER TABLE prompts ADD COLUMN clipModel TEXT")
+                database.execSQL("ALTER TABLE prompts ADD COLUMN vaeModel TEXT")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -88,7 +98,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "ai_prompt_manager.db"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .build()
                 INSTANCE = instance
                 instance

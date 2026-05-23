@@ -21,6 +21,11 @@ data class PromptEntity(
     val isFavorite: Boolean = false,
     val isPinned: Boolean = false,
     val artistPrompt: String = "",
+    // 工作流模型/LoRA 配置
+    val baseModel: String? = null,        // 选用的基础模型 (UNETLoader.unet_name)
+    val loraConfigs: String? = null,      // LoRA 配置 JSON: [{"name":"...","strength":1.0,"enabled":true},...]
+    val clipModel: String? = null,        // CLIP 模型 (CLIPLoader)
+    val vaeModel: String? = null,         // VAE 模型 (VAELoader)
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )
