@@ -664,7 +664,9 @@ class ComfyUIClient(private val context: Context) {
                     else -> File(context.filesDir, outputType)
                 }
                 if (!dir.exists()) dir.mkdirs()
-                val file = File(dir, filename)
+                val ext = filename.substringAfterLast('.', "png")
+                val uniqueName = "AnimaForge_${java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())}_${java.util.UUID.randomUUID().toString().take(8)}.$ext"
+                val file = File(dir, uniqueName)
                 response.body()!!.byteStream().use { input ->
                     file.outputStream().use { output -> input.copyTo(output) }
                 }

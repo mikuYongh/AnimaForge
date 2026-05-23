@@ -365,6 +365,7 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
         }
 
         // 启动前台服务进行生成
+        val comfyUrl = kotlinx.coroutines.runBlocking { settingsManager.comfyUiUrl.first() }
         val intent = Intent(context, ImageGenerationService::class.java).apply {
             action = ImageGenerationService.ACTION_START_GENERATION
             putExtra(ImageGenerationService.EXTRA_POSITIVE_PROMPT, positivePrompt)
@@ -384,6 +385,7 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
             putExtra(ImageGenerationService.EXTRA_KSAMPLER_NAME, ksamplerName)
             putExtra(ImageGenerationService.EXTRA_KSCHEDULER, kscheduler)
             putExtra(ImageGenerationService.EXTRA_ARTIST_PROMPT, artistPrompt)
+            putExtra(ImageGenerationService.EXTRA_COMFYUI_URL, comfyUrl)
             putStringArrayListExtra(
                 ImageGenerationService.EXTRA_INPUT_IMAGE_URIS,
                 ArrayList(inputImageUris.map { it.toString() })

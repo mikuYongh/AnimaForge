@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -92,6 +93,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.aiphoto.manager.data.model.PromptWithTags
+import com.aiphoto.manager.ui.component.ArtistPickerDialog
 import com.aiphoto.manager.ui.component.ArtistPreviewDialog
 import com.aiphoto.manager.ui.component.ImagePicker
 import com.aiphoto.manager.ui.component.TagChip
@@ -101,6 +103,18 @@ import com.aiphoto.manager.ui.theme.LocalAppColorSet
 import com.aiphoto.manager.ui.component.AuraParticlesBackground
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Whatshot
+import com.aiphoto.manager.api.ArtistApiClient
+import com.aiphoto.manager.data.model.Artist
+import androidx.compose.ui.window.DialogProperties
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -223,10 +237,11 @@ fun EditScreen(
         )
     }
     if (showFavoriteArtistDialog) {
-        FavoritePromptDialog(
-            title = "选择画师收藏",
-            favoritePrompts = favoriteArtistPrompts,
-            selectedPrompts = selectedFavoriteArtist,
+        FavoriteArtistDialog(
+            artists = artistList,
+            favoriteArtistPrompts = favoriteArtistPrompts,
+            selectedArtists = selectedFavoriteArtist,
+            onToggleFavorite = { artistTag -> viewModel.toggleFavoritePrompt(artistTag, "artist") },
             onDismiss = { showFavoriteArtistDialog = false; selectedFavoriteArtist.clear() },
             onConfirm = {
                 selectedFavoriteArtist.forEach { prompt ->
@@ -243,6 +258,8 @@ fun EditScreen(
             artists = artistList,
             isLoading = artistListLoading,
             selectedArtists = artistPromptList,
+            favoriteArtists = favoriteArtistPrompts.toSet(),
+            onToggleFavorite = { artistTag -> viewModel.toggleFavoritePrompt(artistTag, "artist") },
             onDismiss = { showArtistPickerDialog = false },
             onConfirm = { showArtistPickerDialog = false },
             searchQuery = viewModel.artistSearchQuery,
@@ -453,7 +470,10 @@ fun EditScreen(
                 },
                 onParseBatch = { },
                 onClear = { artistPromptList.clear() },
-                onShowFavorites = { showFavoriteArtistDialog = true },
+                onShowFavorites = {
+                    viewModel.loadArtistList()
+                    showFavoriteArtistDialog = true
+                },
                 onRemoveItem = { artistPromptList.removeAt(it) },
                 extraActions = {
                     TextButton(onClick = {
@@ -832,129 +852,265 @@ fun FavoritePromptDialog(
     )
 }
 
-private fun parsePrompts(text: String): List<String> {
-    return text.split(",")
-        .map { it.trim() }
-        .filter { it.isNotBlank() }
-        .distinct()
-}
-
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
-fun ArtistPickerDialog(
-    artists: List<com.aiphoto.manager.data.model.Artist>,
-    isLoading: Boolean,
+fun FavoriteArtistDialog(
+    artists: List<Artist>,
+    favoriteArtistPrompts: List<String>,
     selectedArtists: MutableList<String>,
+    onToggleFavorite: (String) -> Unit,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-    searchQuery: String = "",
-    onSearchChange: (String) -> Unit = {},
-    sortByPostCount: Boolean = true,
-    onSortChange: (Boolean) -> Unit = {},
-    visibleCount: Int = 200,
-    onVisibleCountChange: (Int) -> Unit = {}
+    onConfirm: () -> Unit
 ) {
-    var previewArtist by remember { mutableStateOf<com.aiphoto.manager.data.model.Artist?>(null) }
-    val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
+    val appColorSet = LocalAppColorSet.current
+    val highlightColor = if (appColorSet.promptChipPositive.startsWith("#")) {
+        Color(android.graphics.Color.parseColor(appColorSet.promptChipPositive))
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
 
-    val filteredArtists = remember(artists, searchQuery, sortByPostCount) {
-        val list = if (searchQuery.isBlank()) artists
-        else artists.filter {
+    var searchQuery by remember { mutableStateOf("") }
+    var previewArtistTag by remember { mutableStateOf<String?>(null) }
+
+    // Look up the Artist details for each favorite tag and apply filter
+    val favoriteArtistObjects = remember(favoriteArtistPrompts, artists, searchQuery) {
+        val list = favoriteArtistPrompts.map { tag ->
+            artists.find { it.tag.equals(tag, ignoreCase = true) } ?: Artist(
+                tag = tag,
+                slug = tag,
+                imageId = "",
+                hasImage = false,
+                postCount = 0,
+                shard = ""
+            )
+        }
+        if (searchQuery.isBlank()) list
+        else list.filter {
             it.tag.contains(searchQuery, ignoreCase = true) ||
                 it.slug.contains(searchQuery, ignoreCase = true)
         }
-        if (sortByPostCount) list.sortedByDescending { it.postCount }
-        else list.sortedBy { it.slug.lowercase() }
     }
 
-    val displayArtists = remember(filteredArtists, visibleCount) {
-        filteredArtists.take(visibleCount)
+    // 唤起画师详细作品预览弹窗
+    previewArtistTag?.let { artistTag ->
+        ArtistPreviewDialog(
+            artistTag = artistTag,
+            onDismiss = { previewArtistTag = null }
+        )
     }
 
-    val showBackToTop by remember { derivedStateOf { listState.firstVisibleItemIndex > 4 } }
-
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择画师") },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 500.dp)
-            ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = {
-                        onSearchChange(it)
-                        if (searchQuery != it) onVisibleCountChange(200)
-                    },
-                    placeholder = { Text("搜索画师...") },
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.8f)
+                .background(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(24.dp)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = !sortByPostCount,
-                        onClick = {
-                            if (sortByPostCount) onVisibleCountChange(200)
-                            onSortChange(false)
-                        },
-                        label = { Text("按名称") }
-                    )
-                    FilterChip(
-                        selected = sortByPostCount,
-                        onClick = {
-                            if (!sortByPostCount) onVisibleCountChange(200)
-                            onSortChange(true)
-                        },
-                        label = { Text("按热度") }
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(100.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                } else if (filteredArtists.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(100.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("无结果", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                } else {
-                    Box {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .border(
+                    width = 1.5.dp,
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            highlightColor.copy(alpha = 0.5f),
+                            highlightColor.copy(alpha = 0.1f)
+                        )
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                )
+                .clip(RoundedCornerShape(24.dp))
+        ) {
+            // 背景粒子及模糊图层
+            AuraParticlesBackground {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    containerColor = Color.Transparent,
+                    topBar = {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
                         ) {
-                        item {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                displayArtists.forEach { artist ->
+                                // 取消按钮 (圆形)
+                                IconButton(
+                                    onClick = onDismiss,
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), CircleShape)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "关闭",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "画师收藏夹",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "共收藏 ${favoriteArtistPrompts.size} 位画师" +
+                                            if (selectedArtists.isNotEmpty()) " · 已选 ${selectedArtists.size} 个" else "",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                // 确认/添加按钮 (圆形带渐变)
+                                IconButton(
+                                    onClick = onConfirm,
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    appColorSet.btnGradientStart,
+                                                    appColorSet.btnGradientEnd
+                                                )
+                                            ),
+                                            shape = CircleShape
+                                        )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "添加",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // 搜索栏 (只有在有收藏时才显示搜索栏)
+                            if (favoriteArtistPrompts.isNotEmpty()) {
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    placeholder = { Text("搜索已收藏画师...", fontSize = 12.sp) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        if (searchQuery.isNotEmpty()) {
+                                            IconButton(onClick = { searchQuery = "" }) {
+                                                Icon(Icons.Default.Close, contentDescription = "清除", modifier = Modifier.size(16.dp))
+                                            }
+                                        }
+                                    },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    ),
+                                    modifier = Modifier.fillMaxWidth().heightIn(max = 48.dp)
+                                )
+                            }
+                        }
+                    }
+                ) { innerPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+                        if (favoriteArtistPrompts.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.FavoriteBorder,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(64.dp),
+                                        tint = highlightColor.copy(alpha = 0.3f)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "暂无收藏的画师",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "可以在画师选择列表中点击爱心收藏",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        } else if (favoriteArtistObjects.isEmpty()) {
+                            // 搜索无结果
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "没有找到符合搜索条件的画师",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(favoriteArtistObjects, key = { it.tag }) { artist ->
                                     val isSelected = artist.tag in selectedArtists
-                                    Column(
+
+                                    // 收藏卡片设计
+                                    Card(
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (isSelected) {
+                                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+                                            } else {
+                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                                            }
+                                        ),
                                         modifier = Modifier
-                                            .width(80.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .then(
-                                                if (isSelected) Modifier.background(MaterialTheme.colorScheme.primaryContainer)
-                                                else Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                                            .fillMaxWidth()
+                                            .border(
+                                                width = if (isSelected) 2.dp else 1.dp,
+                                                color = if (isSelected) highlightColor else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                                shape = RoundedCornerShape(16.dp)
                                             )
+                                            .clip(RoundedCornerShape(16.dp))
                                             .combinedClickable(
                                                 onClick = {
                                                     if (isSelected) {
@@ -964,156 +1120,117 @@ fun ArtistPickerDialog(
                                                     }
                                                 },
                                                 onLongClick = {
-                                                    previewArtist = artist
+                                                    previewArtistTag = artist.tag
+                                                },
+                                                onDoubleClick = {
+                                                    previewArtistTag = artist.tag
                                                 }
                                             )
-                                            .padding(6.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        if (artist.hasImage) {
-                                            AsyncImage(
-                                                model = com.aiphoto.manager.api.ArtistApiClient.getImageUrl(artist.imageId),
-                                                contentDescription = artist.slug,
-                                                modifier = Modifier
-                                                    .size(56.dp)
-                                                    .clip(RoundedCornerShape(6.dp)),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        } else {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth().padding(10.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            // 头像与取消收藏按钮组合
                                             Box(
                                                 modifier = Modifier
-                                                    .size(56.dp)
-                                                    .clip(RoundedCornerShape(6.dp))
-                                                    .background(MaterialTheme.colorScheme.outlineVariant),
+                                                    .size(64.dp)
+                                                    .clip(CircleShape)
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant),
                                                 contentAlignment = Alignment.Center
                                             ) {
-                                                Icon(
-                                                    Icons.Default.Person,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(28.dp),
-                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
+                                                if (artist.hasImage) {
+                                                    AsyncImage(
+                                                        model = ArtistApiClient.getImageUrl(artist.imageId),
+                                                        contentDescription = artist.slug,
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        contentScale = ContentScale.Crop
+                                                    )
+                                                } else {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Person,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(32.dp),
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                    )
+                                                }
                                             }
-                                        }
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            artist.tag,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                        Text(
-                                            "${artist.postCount}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            fontSize = 9.sp
-                                        )
-                                        if (isSelected) {
-                                            Icon(
-                                                Icons.Default.Check,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(14.dp)
+
+                                            Spacer(modifier = Modifier.height(8.dp))
+
+                                            Text(
+                                                text = artist.tag,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                color = if (isSelected) highlightColor else MaterialTheme.colorScheme.onSurface,
+                                                textAlign = TextAlign.Center,
+                                                modifier = Modifier.fillMaxWidth()
                                             )
+
+                                            Spacer(modifier = Modifier.height(4.dp))
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                // 人气
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier
+                                                        .background(
+                                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f),
+                                                            shape = RoundedCornerShape(6.dp)
+                                                        )
+                                                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Whatshot,
+                                                        contentDescription = "热度",
+                                                        modifier = Modifier.size(10.dp),
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                    Spacer(modifier = Modifier.width(2.dp))
+                                                    Text(
+                                                        text = "${artist.postCount}",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        fontSize = 9.sp
+                                                    )
+                                                }
+
+                                                // 取消收藏红心按钮 (点击垃圾桶或红心取消收藏)
+                                                IconButton(
+                                                    onClick = { onToggleFavorite(artist.tag) },
+                                                    modifier = Modifier.size(24.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Favorite,
+                                                        contentDescription = "取消收藏",
+                                                        modifier = Modifier.size(16.dp),
+                                                        tint = Color(0xFFFF2D55)
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                        if (visibleCount < filteredArtists.size) {
-                            item {
-                                TextButton(
-                                    onClick = { onVisibleCountChange(visibleCount + 200) },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text("加载更多 (${filteredArtists.size - visibleCount} 个剩余)")
-                                }
-                            }
-                        }
                     }
-                    // 回到顶部按钮
-                    if (showBackToTop) {
-                        SmallFloatingActionButton(
-                            onClick = {
-                                scope.launch {
-                                    listState.animateScrollToItem(0)
-                                }
-                            },
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(12.dp),
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Icon(Icons.Default.KeyboardArrowUp, "回到顶部")
-                        }
-                    }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("完成")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
-    )
-
-    previewArtist?.let { artist ->
-        Dialog(onDismissRequest = { previewArtist = null }) {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.wrapContentSize().padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (artist.hasImage) {
-                        AsyncImage(
-                            model = com.aiphoto.manager.api.ArtistApiClient.getImageUrl(artist.imageId),
-                            contentDescription = artist.slug,
-                            modifier = Modifier
-                                .size(256.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(256.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.outlineVariant),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                modifier = Modifier.size(96.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        artist.tag,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        "${artist.postCount} 作品",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }
     }
 }
+
+private fun parsePrompts(text: String): List<String> {
+    return text.split(",")
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .distinct()
+}
+
+

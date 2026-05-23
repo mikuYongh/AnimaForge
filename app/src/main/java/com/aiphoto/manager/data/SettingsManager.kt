@@ -23,7 +23,8 @@ class SettingsManager(private val context: Context) {
 
     val comfyUiUrl: Flow<String> = context.dataStore.data
         .map { preferences ->
-            preferences[COMFYUI_URL] ?: "http://192.168.123.178:8188"
+            val url = preferences[COMFYUI_URL] ?: ""
+            url.ifBlank { "http://192.168.123.178:8188" }
         }
 
     val comfyUiWorkflow: Flow<String> = context.dataStore.data
@@ -33,7 +34,8 @@ class SettingsManager(private val context: Context) {
 
     val comfyUiVideoUrl: Flow<String> = context.dataStore.data
         .map { preferences ->
-            preferences[COMFYUI_VIDEO_URL] ?: preferences[COMFYUI_URL] ?: "http://192.168.123.178:8188"
+            val url = preferences[COMFYUI_VIDEO_URL] ?: preferences[COMFYUI_URL] ?: ""
+            url.ifBlank { "http://192.168.123.178:8188" }
         }
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data

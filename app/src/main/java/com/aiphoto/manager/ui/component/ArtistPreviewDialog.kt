@@ -1,5 +1,6 @@
 package com.aiphoto.manager.ui.component
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -201,9 +202,9 @@ private fun ArtistCard(
         shape = RoundedCornerShape(16.dp),
         onClick = onClick,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = Color.Transparent
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(

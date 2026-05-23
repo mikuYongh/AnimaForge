@@ -12,6 +12,7 @@ import com.aiphoto.manager.App
 import com.aiphoto.manager.api.ComfyUIClient
 import com.aiphoto.manager.api.ArtistApiClient
 import com.aiphoto.manager.data.SettingsManager
+import com.aiphoto.manager.data.local.entity.FavoritePromptEntity
 import com.aiphoto.manager.data.local.entity.GeneratedImageEntity
 import com.aiphoto.manager.data.local.entity.PromptEntity
 import com.aiphoto.manager.data.local.entity.TagEntity
@@ -29,13 +30,13 @@ import java.util.UUID
 
 class EditViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val db = (application as App).database
     private val repository: PromptRepository
     private val settingsManager: SettingsManager
     private val comfyUIClient: ComfyUIClient
     private val context = application.applicationContext
 
     init {
-        val db = (application as App).database
         repository = PromptRepository(db.promptDao(), db.tagDao())
         settingsManager = SettingsManager(context)
         comfyUIClient = ComfyUIClient(context)
@@ -182,10 +183,28 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadFavoritePrompts() {
         viewModelScope.launch {
-            (getApplication<Application>() as App).database.favoritePromptDao().getAll().collect { favorites ->
+            db.favoritePromptDao().getAll().collect { favorites ->
                 _favoritePositivePrompts.value = favorites.filter { it.type == "positive" }.map { it.content }
                 _favoriteNegativePrompts.value = favorites.filter { it.type == "negative" }.map { it.content }
                 _favoriteArtistPrompts.value = favorites.filter { it.type == "artist" }.map { it.content }
+            }
+        }
+    }
+
+    fun toggleFavoritePrompt(content: String, type: String) {
+        viewModelScope.launch {
+            val existing = db.favoritePromptDao().findByContentAndType(content, type)
+            if (existing != null) {
+                db.favoritePromptDao().delete(existing)
+            } else {
+                db.favoritePromptDao().insert(
+                    FavoritePromptEntity(
+                        id = UUID.randomUUID().toString(),
+                        content = content,
+                        type = type,
+                        createdAt = System.currentTimeMillis()
+                    )
+                )
             }
         }
     }

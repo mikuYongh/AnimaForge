@@ -161,13 +161,50 @@ class VideoGenerateViewModel(application: Application) : AndroidViewModel(applic
                                             val info = arr[0].asJsonObject
                                             _progress.value = "下载视频 $i/$batchCount..."
                                             val dl = withContext(Dispatchers.IO) { comfyUIClient.downloadFile(info.get("filename").asString, info.get("subfolder")?.asString ?: "", info.get("type")?.asString ?: "output", "video") }
-                                            if (dl.isSuccess) { videos.add(dl.getOrThrow()); found = true }; break
+                                            if (dl.isSuccess) {
+                                                videos.add(dl.getOrThrow())
+                                                _generatedVideos.value = videos.toList()
+                                                found = true
+                                            }
+                                            break
                                         }
                                     }
                                 }
                             }
                         }
                         wsJob?.cancel()
+
+                        // 退出等待循环后，如果还没下载成功该视频，做一次最后的拉取和下载重试
+                        if (isActive && videos.size < i) {
+                            _progress.value = "获取生成结果 $i/$batchCount..."
+                            var dlSuccess = false
+                            for (retry in 1..3) {
+                                if (!isActive) break
+                                val hist = withContext(Dispatchers.IO) { comfyUIClient.getHistoryById(targetPid) }
+                                if (hist.isSuccess && hist.getOrNull() != null) {
+                                    val obj = hist.getOrNull()!!
+                                    val outs = obj.getAsJsonObject("outputs")
+                                    if (outs != null) {
+                                        for ((_, nv) in outs.entrySet()) {
+                                            val arr = nv.asJsonObject.getAsJsonArray("images") ?: nv.asJsonObject.getAsJsonArray("gif") ?: nv.asJsonObject.getAsJsonArray("video") ?: continue
+                                            if (arr.size() > 0) {
+                                                val info = arr[0].asJsonObject
+                                                _progress.value = "下载视频 $i/$batchCount..."
+                                                val dl = withContext(Dispatchers.IO) { comfyUIClient.downloadFile(info.get("filename").asString, info.get("subfolder")?.asString ?: "", info.get("type")?.asString ?: "output", "video") }
+                                                if (dl.isSuccess) {
+                                                    videos.add(dl.getOrThrow())
+                                                    _generatedVideos.value = videos.toList()
+                                                    dlSuccess = true
+                                                }
+                                                break
+                                            }
+                                        }
+                                    }
+                                }
+                                if (dlSuccess) break
+                                kotlinx.coroutines.delay(1000)
+                            }
+                        }
                     }
                 } finally { comfyUIClient.disconnectWebSocket() }
 

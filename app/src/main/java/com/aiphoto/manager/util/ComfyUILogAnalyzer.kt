@@ -50,12 +50,16 @@ object ComfyUILogAnalyzer {
         maxItems: Int = 20
     ): Map<String, WorkflowInfo> = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "开始获取历史记录，URL: $comfyUiUrl")
+            Log.d(TAG, "开始获取历史记录，URL: [$comfyUiUrl], maxItems: $maxItems")
             val client = ComfyUIClient(context)
+            Log.d(TAG, "ComfyUIClient 创建完毕，设置 URL: $comfyUiUrl")
             client.setServerUrl(comfyUiUrl)
             val response = client.getHistory(maxItems)
 
-            Log.d(TAG, "获取到历史记录，条目数: ${response.size()}")
+            Log.d(TAG, "返回 JSON 大小: ${response.size()}, JSON: $response")
+            if (response.size() == 0) {
+                Log.w(TAG, "历史记录为空！可能是 URL 错误或服务端无数据")
+            }
             val historyMap = mutableMapOf<String, WorkflowInfo>()
 
             response.entrySet().forEach { entry ->
@@ -65,7 +69,7 @@ object ComfyUILogAnalyzer {
                 try {
                     val workflowInfo = parseHistoryEntry(promptId, historyData)
                     historyMap[promptId] = workflowInfo
-                    Log.d(TAG, "成功解析历史记录: $promptId")
+                    Log.d(TAG, "成功解析历史记录: $promptId, 完成=${workflowInfo.completed}")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error parsing history entry $promptId", e)
                 }
@@ -135,13 +139,22 @@ object ComfyUILogAnalyzer {
                     }
                 }
 
-                "ClownsharKSampler_Beta", "KSampler", "KSamplerAdvanced" -> {
+                "ClownsharKSampler_Beta", "KSampler" -> {
                     val inputs = node.getAsJsonObject("inputs")
                     sampler = inputs.get("sampler_name")?.asString
                     scheduler = inputs.get("scheduler")?.asString
                     steps = inputs.get("steps")?.asInt
                     cfg = inputs.get("cfg")?.asDouble
                     seed = inputs.get("seed")?.asLong
+                }
+
+                "KSamplerAdvanced" -> {
+                    val inputs = node.getAsJsonObject("inputs")
+                    sampler = inputs.get("sampler_name")?.asString
+                    scheduler = inputs.get("scheduler")?.asString
+                    steps = inputs.get("steps")?.asInt
+                    cfg = inputs.get("cfg")?.asDouble
+                    seed = inputs.get("noise_seed")?.asLong
                 }
 
                 "SDXLEmptyLatentSizePicker+", "EmptyLatentImage" -> {

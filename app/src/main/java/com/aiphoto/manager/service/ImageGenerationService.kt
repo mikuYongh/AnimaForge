@@ -78,6 +78,7 @@ class ImageGenerationService : Service() {
         const val EXTRA_KSAMPLER_NAME = "ksampler_name"
         const val EXTRA_KSCHEDULER = "kscheduler"
         const val EXTRA_ARTIST_PROMPT = "artist_prompt"
+        const val EXTRA_COMFYUI_URL = "comfyui_url"
     }
 
     inner class LocalBinder : Binder() {
@@ -117,6 +118,10 @@ class ImageGenerationService : Service() {
                 val ksamplerName = intent.getStringExtra(EXTRA_KSAMPLER_NAME) ?: "euler_ancestral"
                 val kscheduler = intent.getStringExtra(EXTRA_KSCHEDULER) ?: "normal"
                 val artistPrompt = intent.getStringExtra(EXTRA_ARTIST_PROMPT) ?: ""
+                val serverUrl = intent.getStringExtra(EXTRA_COMFYUI_URL)
+                if (serverUrl != null) {
+                    comfyUIClient.setServerUrl(serverUrl)
+                }
 
                 startGeneration(
                     positivePrompt = positivePrompt,

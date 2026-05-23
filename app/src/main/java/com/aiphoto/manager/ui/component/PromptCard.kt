@@ -93,9 +93,9 @@ fun PromptCard(
                 onClick = onClick
             ),
         shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isPressed) 1.dp else 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f) // Glassmorphism backdrop
+            containerColor = Color.Transparent
         )
     ) {
         Column {
@@ -150,7 +150,7 @@ fun PromptCard(
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                                    Color.Transparent
                                 )
                             )
                         )

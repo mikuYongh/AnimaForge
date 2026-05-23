@@ -112,79 +112,10 @@ fun ImagePicker(
 
     // 图片预览对话框
     previewImageUri?.let { uri ->
-        ImagePreviewDialog(
-            imageUri = uri,
-            onDismiss = { previewImageUri = null },
-            onSave = {
-                saveImageToGallery(context, uri)
-                Toast.makeText(context, "已保存到相册", Toast.LENGTH_SHORT).show()
-            }
+        MediaPreviewDialog(
+            mediaUri = uri,
+            isVideo = false,
+            onDismiss = { previewImageUri = null }
         )
-    }
-}
-
-@Composable
-private fun ImagePreviewDialog(
-    imageUri: Uri,
-    onDismiss: () -> Unit,
-    onSave: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    MaterialTheme.colorScheme.surface,
-                    RoundedCornerShape(16.dp)
-                )
-                .padding(16.dp)
-        ) {
-            AsyncImage(
-                model = imageUri,
-                contentDescription = "预览图片",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Fit
-            )
-
-            TextButton(
-                onClick = onSave,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-            ) {
-                Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
-                Text("保存到相册")
-            }
-        }
-    }
-}
-
-private fun saveImageToGallery(context: Context, uri: Uri) {
-    try {
-        val inputStream = context.contentResolver.openInputStream(uri)
-        val bitmap = BitmapFactory.decodeStream(inputStream)
-        inputStream?.close()
-
-        val fileName = "AI_Prompt_${System.currentTimeMillis()}.jpg"
-        val file = File(context.getExternalFilesDir("Pictures"), fileName)
-
-        FileOutputStream(file).use { output ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, output)
-        }
-
-        // 通知相册更新
-        val intent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
-        val contentUri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
-        intent.data = contentUri
-        context.sendBroadcast(intent)
-    } catch (e: Exception) {
-        e.printStackTrace()
     }
 }

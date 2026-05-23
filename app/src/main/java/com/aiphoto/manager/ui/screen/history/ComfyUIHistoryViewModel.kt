@@ -1,6 +1,7 @@
 package com.aiphoto.manager.ui.screen.history
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiphoto.manager.App
@@ -26,14 +27,16 @@ class ComfyUIHistoryViewModel(application: Application) : AndroidViewModel(appli
             _isLoading.value = true
             try {
                 val comfyUiUrl = settingsManager.comfyUiUrl.first()
+                Log.d("ComfyUIHistory", "加载历史记录，URL: $comfyUiUrl")
                 val history = ComfyUILogAnalyzer.getHistory(
                     context = getApplication(),
                     comfyUiUrl = comfyUiUrl,
                     maxItems = 50
                 )
+                Log.d("ComfyUIHistory", "历史记录结果: ${history.size} 条")
                 _history.value = history
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("ComfyUIHistory", "加载历史记录异常", e)
             } finally {
                 _isLoading.value = false
             }

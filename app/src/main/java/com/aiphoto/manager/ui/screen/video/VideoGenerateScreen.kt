@@ -78,6 +78,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import java.io.File
 import com.aiphoto.manager.ui.component.AuraParticlesBackground
+import com.aiphoto.manager.ui.component.MediaPreviewDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,6 +103,7 @@ fun VideoGenerateScreen(
     var vidWidth by remember { mutableStateOf(viewModel.lastWidth.toString()) }
     var vidHeight by remember { mutableStateOf(viewModel.lastHeight.toString()) }
     var batchCount by remember { mutableStateOf("1") }
+    var previewVideoUri by remember { mutableStateOf<Uri?>(null) }
 
     val imageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
@@ -364,7 +366,7 @@ fun VideoGenerateScreen(
                                     ),
                                 shape = RoundedCornerShape(14.dp),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+                                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
                             ) {
                                 Column {
                                     val thumb = remember(videoPath) {
@@ -380,19 +382,17 @@ fun VideoGenerateScreen(
                                     Row(modifier = Modifier.fillMaxWidth().padding(4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                                         val fileUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(videoPath))
                                         IconButton(onClick = {
-                                            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW).apply { setDataAndType(fileUri, "video/*"); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }, "打开"))
+                                            previewVideoUri = Uri.fromFile(File(videoPath))
                                         }) { Icon(Icons.Default.PlayArrow, "播放", modifier = Modifier.size(20.dp)) }
                                         IconButton(onClick = {
                                             val file = File(videoPath)
                                             val destDir = File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MOVIES), "AnimaForge")
                                             if (!destDir.exists()) destDir.mkdirs()
-                                            val dest = File(destDir, file.name)
-                                            if (dest.absolutePath != file.absolutePath) {
-                                                file.copyTo(dest, overwrite = true)
-                                                android.media.MediaScannerConnection.scanFile(context, arrayOf(dest.absolutePath), null, null)
-                                            } else {
-                                                android.media.MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), null, null)
-                                            }
+                                            val ext = file.extension.ifEmpty { "mp4" }
+                                            val uniqueName = "AnimaForge_${java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())}_${java.util.UUID.randomUUID().toString().take(8)}.$ext"
+                                            val dest = File(destDir, uniqueName)
+                                            file.copyTo(dest, overwrite = false)
+                                            android.media.MediaScannerConnection.scanFile(context, arrayOf(dest.absolutePath), null, null)
                                             Toast.makeText(context, "已保存", Toast.LENGTH_SHORT).show()
                                         }) { Icon(Icons.Default.Save, "保存", modifier = Modifier.size(20.dp)) }
                                         IconButton(onClick = {
@@ -408,6 +408,14 @@ fun VideoGenerateScreen(
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+
+    previewVideoUri?.let { uri ->
+        MediaPreviewDialog(
+            mediaUri = uri,
+            isVideo = true,
+            onDismiss = { previewVideoUri = null }
+        )
     }
 }
 

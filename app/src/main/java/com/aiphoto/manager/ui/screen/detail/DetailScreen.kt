@@ -1,8 +1,10 @@
 package com.aiphoto.manager.ui.screen.detail
 
+import android.net.Uri
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,6 +72,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.aiphoto.manager.ui.component.ArtistPreviewDialog
 import com.aiphoto.manager.ui.component.AuraParticlesBackground
+import com.aiphoto.manager.ui.component.MediaPreviewDialog
 import com.aiphoto.manager.ui.component.TagChip
 import com.aiphoto.manager.ui.theme.LocalAppColorSet
 import com.aiphoto.manager.ui.theme.tagColorFor
@@ -94,6 +97,7 @@ fun DetailScreen(
     val scope = rememberCoroutineScope()
     var showDeleteDialog by remember { mutableStateOf(false) }
     var previewArtistTag by remember { mutableStateOf<String?>(null) }
+    var previewImageUri by remember { mutableStateOf<Uri?>(null) }
 
     LaunchedEffect(promptId) {
         viewModel.loadPrompt(promptId)
@@ -133,6 +137,15 @@ fun DetailScreen(
         ArtistPreviewDialog(
             artistTag = artist,
             onDismiss = { previewArtistTag = null }
+        )
+    }
+
+    // 图片预览弹窗
+    previewImageUri?.let { uri ->
+        MediaPreviewDialog(
+            mediaUri = uri,
+            isVideo = false,
+            onDismiss = { previewImageUri = null }
         )
     }
 
@@ -207,7 +220,10 @@ fun DetailScreen(
                                             width = 1.dp,
                                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                                             shape = RoundedCornerShape(16.dp)
-                                        ),
+                                        )
+                                        .clickable {
+                                            previewImageUri = Uri.fromFile(File(images[index].imagePath))
+                                        },
                                     contentScale = ContentScale.Crop
                                 )
                             }
