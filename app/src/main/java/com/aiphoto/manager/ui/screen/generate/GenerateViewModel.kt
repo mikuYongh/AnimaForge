@@ -532,27 +532,6 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
         return com.google.gson.Gson().toJson(arr)
     }
 
-    /**
-     * 将当前模型/LoRA 配置保存到 PromptEntity
-     */
-    fun saveModelConfigToPrompt(promptId: String) {
-        viewModelScope.launch {
-            try {
-                val prompt = promptDao.getPromptById(promptId)
-                val entity = prompt.first()?.prompt ?: return@launch
-                val updated = entity.copy(
-                    baseModel = _selectedBaseModel.value,
-                    loraConfigs = exportLoraConfigsToJson().ifBlank { null },
-                    updatedAt = System.currentTimeMillis()
-                )
-                promptDao.updatePrompt(updated)
-                Log.d("GenerateVM", "模型/LoRA 配置已保存到 prompt: $promptId")
-            } catch (e: Exception) {
-                Log.e("GenerateVM", "保存模型配置失败", e)
-            }
-        }
-    }
-
     // 设置选中的 KSampler
     fun setSelectedKSampler(sampler: String) {
         _selectedKSampler.value = sampler
@@ -655,16 +634,27 @@ class GenerateViewModel(application: Application) : AndroidViewModel(application
         saveLastUsedKSampler(ksamplerName)
         saveLastUsedKScheduler(kscheduler)
 
-        // 保存高级参数到提示词
+        // 保存高级参数 + 模型/LoRA 配置到提示词（同步确保写入）
         kotlinx.coroutines.runBlocking {
             promptDao.updatePromptDimensions(
                 promptId, width, height, steps, cfgScale,
                 System.currentTimeMillis()
             )
+            try {
+                val promptFlow = promptDao.getPromptById(promptId)
+                val promptWithTags = promptFlow.first { it != null }
+                val entity = promptWithTags?.prompt ?: return@runBlocking
+                val updated = entity.copy(
+                    baseModel = _selectedBaseModel.value,
+                    loraConfigs = exportLoraConfigsToJson().ifBlank { null },
+                    updatedAt = System.currentTimeMillis()
+                )
+                promptDao.updatePrompt(updated)
+                Log.d("GenerateVM", "模型/LoRA 配置已保存到 prompt: $promptId, model=${_selectedBaseModel.value}")
+            } catch (e: Exception) {
+                Log.e("GenerateVM", "保存模型配置失败", e)
+            }
         }
-
-        // 保存模型/LoRA 配置到提示词
-        saveModelConfigToPrompt(promptId)
 
         // 启动前台服务进行生成
         val comfyUrl = kotlinx.coroutines.runBlocking { settingsManager.comfyUiUrl.first() }
